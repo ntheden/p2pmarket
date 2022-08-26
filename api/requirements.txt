@@ -1,0 +1,15 @@
+anyio==3.6.1
+click==8.1.3
+fastapi==0.80.0
+h11==0.13.0
+idna==3.3
+pyaes==1.6.1
+pydantic==1.9.2
+Pyrogram==2.0.41
+PySocks==1.7.1
+sniffio==1.2.0
+starlette==0.19.1
+TgCrypto==1.2.3
+typing-extensions==4.3.0
+uvicorn==0.18.3
+uvloop==0.16.0
