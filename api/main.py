@@ -22,9 +22,8 @@ def init():
             disable_existing_loggers=False
     )
     uvloop.install()
-    global logger, telegram, app
+    global logger, app
     logger = logging.getLogger("main")
-    telegram = TelegramClient("my_account")
     origins = ["http://localhost:3000"]
     app.add_middleware(
             CORSMiddleware,
@@ -35,7 +34,15 @@ def init():
     )
 
 
+@app.get("/providers/tg/{chat_id}")
+async def get_list(chat_id: str):
+    async with TelegramClient("my_account") as tg:
+        await tg.send_message("me", "Greetings from **Pyrogram**!")
+    return {'hello': 'world'}
+
+
 if __name__=="__main__":
     init()
     logger.info('P2P Store API')
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off"))
+    asyncio.run(server.serve())
