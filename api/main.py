@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import json
 import logging
 import logging.config
 from fastapi import FastAPI
@@ -22,8 +23,6 @@ def init():
             disable_existing_loggers=False
     )
     uvloop.install()
-    global logger, app
-    logger = logging.getLogger("main")
     origins = ["http://localhost:3000"]
     app.add_middleware(
             CORSMiddleware,
@@ -34,15 +33,68 @@ def init():
     )
 
 
-@app.get("/providers/tg/{chat_id}")
-async def get_list(chat_id: str):
+messages = []
+
+
+async def progress(current, total):
+    print(f"{current * 100 / total:.1f}%")
+
+
+async def download_media(tg, message):
+    try:
+        await tg.download_media(message, progress=progress)
+    except ValueError as e:
+        if "This message doesn't contain any downloadable media" not in str(e):
+            raise
+
+
+async def synch_messages(chat_id):
+    '''
+    TODO: Idea is to do this periodically or upon telegram notification
+
+    Expecting chat_id to be "@bitcoinp2pmarketplace"
+    '''
     async with TelegramClient("my_account") as tg:
-        await tg.send_message("me", "Greetings from **Pyrogram**!")
-    return {'hello': 'world'}
+        async for message in tg.get_chat_history(chat_id):
+            #await download_media(tg, message)
+            messages.append(message)
+
+
+@app.get("/providers/tg/{chat_id}")
+async def get_message_ids(chat_id: str):
+    global messages
+    if not messages:
+        await synch_messages(chat_id)
+    return sorted([message.id for message in messages])
+
+
+@app.get("/providers/tg/{chat_id}/{id}")
+async def get_message(chat_id: str, id: int):
+    global messages
+    if not messages:
+        await synch_messages(chat_id)
+    items = [m for m in messages if m.id == id]
+    if not items:
+        return
+    return json.loads(str(items[0]))
+
+
+@app.get("/providers/tg/media/{name}")
+async def get_media(name: str):
+    '''
+    XXX This doesn't work
+    '''
+    logger = logging.getLogger("main")
+    logger.info(f"Try to get {name}")
+    async with TelegramClient("my_account") as tg:
+        f = await tg.download_media(name, in_memory=True)
+    return 'hi'
 
 
 if __name__=="__main__":
     init()
-    logger.info('P2P Store API')
-    server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off"))
+    logging.getLogger("main").info('P2P Store API')
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off")
+    )
     asyncio.run(server.serve())
