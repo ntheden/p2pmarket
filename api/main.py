@@ -5,6 +5,7 @@ import logging
 import logging.config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pathlib import Path
 from pyrogram import Client as TelegramClient
 import uvloop
@@ -79,16 +80,21 @@ async def get_message(chat_id: str, id: int):
     return json.loads(str(items[0]))
 
 
-@app.get("/providers/tg/media/{name}")
-async def get_media(name: str):
+@app.get("/providers/tg/media/{name}/{placeholder}")
+async def get_media(name: str, placeholder: int) -> StreamingResponse:
+#@app.get("/providers/tg/media/{name}")
+#async def get_media(name: str):
     '''
-    XXX This doesn't work
+    Returns streamed media
+
+    XXX placeholder(use anything): why am i getting
+    "422 Unprocessable Entity" without this
     '''
-    logger = logging.getLogger("main")
-    logger.info(f"Try to get {name}")
     async with TelegramClient("my_account") as tg:
-        f = await tg.download_media(name, in_memory=True)
-    return 'hi'
+        fobj = await tg.download_media(name, in_memory=True)
+    def iterfile():
+        yield from fobj
+    return StreamingResponse(iterfile())
 
 
 if __name__=="__main__":
