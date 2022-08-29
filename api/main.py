@@ -5,9 +5,10 @@ import logging
 import logging.config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from pathlib import Path
 from pyrogram import Client as TelegramClient
+from typing import Union
 import uvloop
 import uvicorn
 
@@ -43,7 +44,7 @@ async def progress(current, total):
 
 async def download_media(tg, message):
     try:
-        await tg.download_media(message, progress=progress)
+        await tg.download_media(message, f"downloads/{message.id}/", progress=progress)
     except ValueError as e:
         if "This message doesn't contain any downloadable media" not in str(e):
             raise
@@ -61,40 +62,20 @@ async def synch_messages(chat_id):
             messages.append(message)
 
 
-@app.get("/providers/tg/{chat_id}")
-async def get_message_ids(chat_id: str):
+@app.get("/telegram/{chat_id}")
+async def get_message(chat_id: str, msg_id: Union[int, None] = None, photo: Union[bool, None] = None):
     global messages
     if not messages:
         await synch_messages(chat_id)
-    return sorted([message.id for message in messages])
-
-
-@app.get("/providers/tg/{chat_id}/{id}")
-async def get_message(chat_id: str, id: int):
-    global messages
-    if not messages:
-        await synch_messages(chat_id)
-    items = [m for m in messages if m.id == id]
-    if not items:
-        return
-    return json.loads(str(items[0]))
-
-
-@app.get("/providers/tg/media/{name}/{placeholder}")
-async def get_media(name: str, placeholder: int) -> StreamingResponse:
-#@app.get("/providers/tg/media/{name}")
-#async def get_media(name: str):
-    '''
-    Returns streamed media
-
-    XXX placeholder(use anything): why am i getting
-    "422 Unprocessable Entity" without this
-    '''
+    if not msg_id:
+        return sorted([message.id for message in messages])
+    msg = [m for m in messages if m.id == msg_id]
+    msg = msg[0] if msg else None
+    if not photo:
+        return json.loads(str(msg)) if msg else {}
     async with TelegramClient("my_account") as tg:
-        fobj = await tg.download_media(name, in_memory=True)
-    def iterfile():
-        yield from fobj
-    return StreamingResponse(iterfile())
+        fpath = await tg.download_media(msg, f"downloads/{msg.id}/")
+        return FileResponse(fpath)
 
 
 if __name__=="__main__":
