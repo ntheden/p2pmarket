@@ -25,7 +25,7 @@ def init():
             disable_existing_loggers=False
     )
     uvloop.install()
-    origins = ["http://localhost:3000"]
+    origins = ["http://localhost:3000", "http://localhost:3001"]
     app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
@@ -35,6 +35,8 @@ def init():
     )
 
 
+class Flags:
+    redownload = False
 messages = []
 
 
@@ -43,27 +45,44 @@ async def progress(current, total):
 
 
 async def download_media(tg, message):
-    try:
-        await tg.download_media(message, f"downloads/{message.id}/", progress=progress)
-    except ValueError as e:
-        if "This message doesn't contain any downloadable media" not in str(e):
-            raise
+    files = Path(f"downloads/{message.id}")
+    if files.is_dir() and any(files.iterdir()):
+        # already something there. can't verify they are all there or file
+        # integrity, good enough though
+        if not Flags.redownload:
+            return
+    media = message.photo or message.video
+    if not media:
+        # there are many other types of media, only interested in these two for now
+        return
+    fpath = await tg.download_media(message, f"downloads/{message.id}/", progress=progress)
+    if fpath and media.thumbs:
+        fpath = Path(fpath)
+        thumb = await tg.download_media(
+            media.thumbs[0].file_id,
+            fpath.parent.joinpath('thumb-'+fpath.name)
+        )
 
 
-async def synch_messages(chat_id):
+@app.on_event("startup")
+async def synch_messages(chat_id: str = None):
     '''
     TODO: Idea is to do this periodically or upon telegram notification
 
     Expecting chat_id to be "@bitcoinp2pmarketplace"
     '''
+    chat_id = chat_id or "@bitcoinp2pmarketplace"
+    logger = logging.getLogger("main")
+    logger.info("Synchronizing Telegram Messages..")
     async with TelegramClient("my_account") as tg:
         async for message in tg.get_chat_history(chat_id):
-            #await download_media(tg, message)
+            await download_media(tg, message)
             messages.append(message)
+    logger.info("Done Synchronizing Telegram Messages")
 
 
 @app.get("/telegram/{chat_id}")
-async def get_message(chat_id: str, msg_id: Union[int, None] = None, photo: Union[bool, None] = None):
+async def get_message(chat_id: str, msg_id: Union[int, None] = None, thumb: Union[bool, None] = None):
     global messages
     if not messages:
         await synch_messages(chat_id)
@@ -71,11 +90,19 @@ async def get_message(chat_id: str, msg_id: Union[int, None] = None, photo: Unio
         return sorted([message.id for message in messages])
     msg = [m for m in messages if m.id == msg_id]
     msg = msg[0] if msg else None
-    if not photo:
+    if not thumb:
         return json.loads(str(msg)) if msg else {}
-    async with TelegramClient("my_account") as tg:
-        fpath = await tg.download_media(msg, f"downloads/{msg.id}/")
-        return FileResponse(fpath)
+    fpath = Path(f"downloads/{msg.id}")
+    if fpath.is_dir() and any(fpath.iterdir()):
+        # If more than one, the order will likely be first in at
+        # last place, pick the first one
+        # Find a thumb, if any
+        files = list(reversed(list(fpath.iterdir())))
+        for fname in files:
+            if fname.name.startswith('thumb-'):
+                return FileResponse(fname)
+        # did not find a thumb
+        return FileResponse(files[0])
 
 
 if __name__=="__main__":
