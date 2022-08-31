@@ -13,26 +13,27 @@ import uvloop
 import uvicorn
 
 
+logs = Path('.').joinpath('logs')
+logs.mkdir(exist_ok=True)
+logging.config.fileConfig(
+        'logging.conf',
+        defaults={'logfilename': logs/'api.log'},
+        disable_existing_loggers=False
+)
+uvloop.install()
+
+
 app = FastAPI()
 
 
-def init():
-    logs = Path(__file__).parents[1].joinpath('logs')
-    logs.mkdir(exist_ok=True)
-    logging.config.fileConfig(
-            'logging.conf',
-            defaults={'logfilename': logs/'api.log'},
-            disable_existing_loggers=False
-    )
-    uvloop.install()
-    origins = ["http://localhost:3000", "http://localhost:3001"]
-    app.add_middleware(
-            CORSMiddleware,
-            allow_origins=origins,
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-    )
+origins = ["http://localhost:3000", "http://localhost:3001"]
+app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+)
 
 
 class Flags:
@@ -83,6 +84,7 @@ async def synch_messages(chat_id: str = None):
 
 @app.get("/telegram/{chat_id}")
 async def get_message(chat_id: str, msg_id: Union[int, None] = None, thumb: Union[bool, None] = None):
+    logger = logging.getLogger("main")
     global messages
     if not messages:
         await synch_messages(chat_id)
@@ -103,10 +105,10 @@ async def get_message(chat_id: str, msg_id: Union[int, None] = None, thumb: Unio
                 return FileResponse(fname)
         # did not find a thumb
         return FileResponse(files[0])
+    return FileResponse("downloads/shopping-bag.png")
 
 
 if __name__=="__main__":
-    init()
     logging.getLogger("main").info('P2P Store API')
     server = uvicorn.Server(
         uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off")
