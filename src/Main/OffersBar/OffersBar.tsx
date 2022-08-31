@@ -3,48 +3,62 @@ import React, { useEffect, useState, ReactNode } from 'react';
 import { Carousel, ListGroup, Spinner } from 'react-bootstrap';
 import Image from 'react-bootstrap/Image';
 
-export const OffersBar = (): JSX.Element => {
-    const [randomOffers, setRandomOffers] = useState<ReactNode[]>();
+import styles from "./OffersBar.module.scss"
+
+export interface FuncProps {
+  handleMsgIdChange: (id: number) => void;
+};
+
+export const OffersBar = (props: FuncProps): JSX.Element => {
+    const [randomOffers, setRandomOffers] = useState<ReactNode[]>([]);
     const [allOfferIds, setAllOfferIds] = useState<number[]>([]);
 
     useEffect(() => {
         const getIds = async () => {
           try {
               let response = await axios.get(
-                `https://localhost:8001/tg/@bitcoinp2pmarketplace`
+                `http://localhost:8001/telegram/@bitcoinp2pmarketplace`
               );
               setAllOfferIds(response.data);
+              console.log("allOfferIds are:");
               console.log(allOfferIds);
           } catch(err) {
               console.log(err);
           }
         };
+        getIds();
     }, []);
+
+    const carouselSelection = (msgId: number) => {
+        props.handleMsgIdChange(msgId);
+    }
 
     useEffect(() => {
         const randomOfferisTemp = Array.from(
             { length: 12 },
             () => allOfferIds[Math.floor(Math.random() * allOfferIds.length)],
-        ).map((randomNumber, index) => (
-            <ListGroup.Item key={index}>
-                <Image
-                    className="w-80"
-                    src={`http://localhost:8001/tg/@bitcoinp2pmarket?msg_id=${randomNumber}&photo=1`}
-                    roundedCircle={true}
-                    thumbnail={true}
-                />
+        ).map((randomId, index) => (
+            <ListGroup.Item key={index} onClick={() => carouselSelection(randomId)}>
+                {randomId === undefined ? (
+                    <Spinner animation="border" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </Spinner>
+                 ) : (
+                    <>
+                    <Image
+                        className="w-80"
+                        src={`http://localhost:8001/telegram/@bitcoinp2pmarket?msg_id=${randomId}&thumb=1`}
+                        roundedCircle={true}
+                        thumbnail={true}
+                    />
+                    </>
+                 )}
             </ListGroup.Item>
         ));
-
         setRandomOffers(randomOfferisTemp);
-    }, []);
-
-    if (!randomOffers)
-        return (
-            <Spinner animation="border" role="status">
-                <span className="visually-hidden">Loading...</span>
-            </Spinner>
-        );
+        console.log("randomOffers are:")
+        console.log(randomOffers)
+    }, [allOfferIds]);
 
     return (
         <Carousel>

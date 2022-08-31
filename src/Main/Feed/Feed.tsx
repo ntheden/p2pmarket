@@ -6,7 +6,7 @@ import { Footer } from './Footer/Footer';
 
 import styles from './Feed.module.scss';
 
-export const Feed = () => {
+export const Feed = (msgId: any) => {
     return (
         <Card className={styles.feed}>
             <Header />
