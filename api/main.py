@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from pathlib import Path
 from pyrogram import Client as TelegramClient
-from sqlmodel import SQLModel, create_engine, Field, Session
+import sqlalchemy
+from sqlmodel import SQLModel, create_engine, Field, Session, select
 from typing import Union, Optional
 import uvloop
 import uvicorn
@@ -49,16 +50,22 @@ async def progress(current, total):
 
 
 def db_get_media(msg_dict):
-    '''
-    TODO: get info from db and set to this dict
-    '''
     msg_dict["media_type"] = None
+    with Session(engine) as session:
+        try:
+            media = session.exec(select(MessageMedia).where(
+                MessageMedia.id == msg_dict['id'])).one()
+        except sqlalchemy.exc.NoResultFound:
+            return msg_dict
+        msg_dict["media_type"] = media.type
+        media_dict = msg_dict[media.type]
+        media_dict["file_path"] = media.path
+        media_dict["thumb_path"] = media.thumb_path
     return msg_dict
 
 
 class MessageMedia(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    msg_id: int = Field(index=True)
+    id: int = Field(primary_key=True)
     path: Union[str, None]
     thumb_path: Union[str, None]
     type: str = "photo"
@@ -77,7 +84,7 @@ def db_set_media(msg_dict):
         return msg_dict
     with Session(engine) as session:
         media = MessageMedia(
-            msg_id=msg_dict['id'],
+            id=msg_dict['id'],
             path=media_dict["file_path"],
             thumb_path=media_dict["thumb_path"],
             type=msg_dict["media_type"],
