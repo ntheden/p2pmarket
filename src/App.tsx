@@ -10,7 +10,6 @@ export const App = () => {
     const [msgId, setMsgId] = useState<number>(0);
 
     const setId = (id: number) => {
-      console.log(`You clicked ${id}`);
       setMsgId(id);
     };
 
@@ -23,7 +22,7 @@ export const App = () => {
             <Row className={styles.main}>
                 <Col md={{ offset: 2, span: 8 }}>
                     <OffersBar handleMsgIdChange={setId}/>
-                    <Feed {...msgId}/>
+                    <Feed msgId={msgId}/>
                 </Col>
             </Row>
         </div>
