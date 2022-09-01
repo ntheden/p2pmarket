@@ -44,14 +44,12 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
                         <span className="visually-hidden">Loading...</span>
                     </Spinner>
                  ) : (
-                    <>
                     <Image
                         className="w-80"
                         src={`http://localhost:8001/telegram/@bitcoinp2pmarket?msg_id=${randomId}&thumb=1`}
                         roundedCircle={true}
                         thumbnail={true}
                     />
-                    </>
                  )}
             </ListGroup.Item>
         ));
