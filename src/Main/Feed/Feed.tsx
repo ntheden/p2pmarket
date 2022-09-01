@@ -7,24 +7,7 @@ import { Footer } from './Footer/Footer';
 
 import styles from './Feed.module.scss';
 
-export const Feed = ({msgId}: any) => {
-    const [msg, setMsg] = useState<any>({});
-
-    useEffect(() => {
-        const getMsg = async () => {
-          try {
-              let response = await axios.get(
-                `http://localhost:8001/telegram/@bitcoinp2pmarketplace?msg_id=${msgId}`
-              );
-              setMsg(response.data);
-              console.log("message", response);
-          } catch(err) {
-              console.log(err);
-          }
-        };
-        getMsg();
-    }, [msgId]);
-
+export const Feed = ({msg}: any) => {
     return (
         <>
         {Object.keys(msg).length === 0 ? (
@@ -38,9 +21,7 @@ export const Feed = ({msgId}: any) => {
                   className="w-614"
                   src={`http://localhost:8001/telegram/@bitcoinp2pmarket?msg_id=${msg.id}&photo=1`}
               />
-              <Info
-                username={msg.from_user.username}
-              />
+              <Info msg={msg} />
               <Footer />
             </Card>
          )}
