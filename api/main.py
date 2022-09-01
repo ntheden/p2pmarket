@@ -55,8 +55,8 @@ async def progress(current, total):
 
 class MessageMedia(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    path: Union[str, None]
-    thumb_path: Union[str, None]
+    name: Union[str, None]
+    thumb_name: Union[str, None]
     type: str = "photo"
 
 
@@ -78,12 +78,16 @@ def db_get_media(msg_dict):
             return msg_dict
         msg_dict["media_type"] = media.type
         media_dict = msg_dict[media.type]
-        media_dict["file_path"] = media.path
-        media_dict["thumb_path"] = media.thumb_path
+        media_dict["file_name"] = media.name
+        media_dict["thumb_name"] = media.thumb_name
     return msg_dict
 
 
 def db_set_media(msg_dict):
+    '''
+    Creates database entry holding the media filename
+    associated with this message. Also updates :msg_dict:
+    '''
     media_dict = msg_dict[msg_dict["media_type"]]
     if not media_dict:
         return msg_dict
@@ -96,8 +100,8 @@ def db_set_media(msg_dict):
             pass
         media = MessageMedia(
             id=msg_dict['id'],
-            path=media_dict["file_path"],
-            thumb_path=media_dict["thumb_path"],
+            name=media_dict["file_name"],
+            thumb_name=media_dict["thumb_name"],
             type=msg_dict["media_type"],
         )
         session.add(media)
@@ -125,20 +129,20 @@ async def download_and_update_media(tg, message) -> dict:
     msg_dict["media_type"] = key
     media_dict = msg_dict[key]
     media_dict.update({
-        "file_path": None,
-        "thumb_path": None,
+        "file_name": None,
+        "thumb_name": None,
     })
     fpath = await tg.download_media(message, f'{files}/', progress=progress)
     if not fpath:
         return msg_dict
-    media_dict["file_path"] = fpath
+    fpath = Path(fpath)
+    media_dict["file_name"] = fpath.name
     if media.thumbs:
         thumb_dict = media_dict["thumbs"][0]
-        fpath = Path(fpath)
-        thumb_dict["file_path"] = fpath.parent.joinpath('thumb-'+fpath.name)
+        thumb_dict["file_name"] = 'thumb-'+fpath.name
         thumb = await tg.download_media(
             media.thumbs[0].file_id,
-            thumb_dict["file_path"],
+            fpath.parent.joinpath(thumb_dict["file_name"]),
         )
     return db_set_media(msg_dict)
 
@@ -166,28 +170,31 @@ async def synch_messages(chat_id: str = None):
 async def get_message(
         chat_id: str,
         msg_id: Union[int, None] = None,
-        thumb: Union[bool, None] = None
+        thumb: Union[bool, None] = None,
+        photo: Union[bool, None] = None
     ) -> Union[FileResponse, dict]:
     global messages
-    if not messages:
-        await synch_messages(chat_id)
-    if not msg_id:
+    if msg_id is None:
         return sorted([message['obj'].id for message in messages])
     msg = [m for m in messages if m['obj'].id == msg_id]
-    msg_dict = msg[0]['dict'] if msg else None
-    if not thumb:
-        return msg_dict
-    fpath = Path(f"downloads/{msg_dict['id']}")
+    msg = msg[0] if msg else None
+    if not msg:
+        return {}
+    if not thumb and not photo:
+        return msg['dict']
+    with env.prefixed('P2PSTORE_'):
+        fpath = Path(env('PATH', '.'))/f"downloads/{msg['obj'].id}/"
     if fpath.is_dir() and any(fpath.iterdir()):
-        # If more than one, the order will likely be first in at
-        # last place, pick the first one
-        # Find a thumb, if any
-        files = list(reversed(list(fpath.iterdir())))
-        for fname in files:
+        thumb_name = None
+        path = None
+        for fname in fpath.iterdir():
             if fname.name.startswith('thumb-'):
-                return FileResponse(fname)
-        # did not find a thumb
-        return FileResponse(files[0])
+                thumb_name = fname
+            else:
+                path = fname
+        if photo or not thumb_name:
+            return FileResponse(path)
+        return FileResponse(thumb_name)
     return FileResponse("downloads/shopping-bag.png")
 
 
