@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pathlib import Path
 from pyrogram import Client as TelegramClient
 import sqlalchemy
-from sqlmodel import SQLModel, create_engine, Field, Session, select
+from sqlmodel import SQLModel, create_engine, Field, Session, select, Relationship
 from typing import Union, Optional
 import uvloop
 import uvicorn
@@ -54,10 +54,56 @@ async def progress(current, total):
 
 
 class MessageMedia(SQLModel, table=True):
+    '''
+    Deprecated
+    '''
     id: int = Field(primary_key=True)
     name: Union[str, None]
     thumb_name: Union[str, None]
     type: str = "photo"
+
+
+class Media(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    name: Union[str, None]
+    thumb_name: Union[str, None]
+    type: str = "photo"
+    path: str = Union[str, None]
+    message_id: Optional[int] = Field(default=None, foreign_key="message.id")
+    message: Optional["Message"] = Relationship(back_populates="media")
+
+
+class Reaction(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    emoji: Union[str, None]
+    count: int
+    message_id: Optional[int] = Field(default=None, foreign_key="message.id")
+    message: Optional["Message"] = Relationship(back_populates="reactions")
+
+
+class User(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    first_name: Union[str, None]
+    last_name: Union[str, None]
+    username: str
+    is_deleted: bool = False
+    status: Union[str, None] # will not remain optional
+    last_online_date: Union[str, None] # will not remain optional, is this str
+    media_name: Union[str, None]
+    thumb_name: Union[str, None]
+    media_type: str = "photo"
+    messages: Optional[list["Message"]] = Relationship(back_populates="user")
+
+
+class Message(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    caption: str = ""
+    date: str # is this str
+    is_deleted: bool = False
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    user: Optional[User] = Relationship(back_populates="messages")
+    media: Optional[list["Media"]] = Relationship(back_populates="message")
+    reactions: Optional[list["Reaction"]] = Relationship(back_populates="message")
 
 
 # configure database
@@ -147,8 +193,7 @@ async def download_and_update_media(tg, message) -> dict:
     return db_set_media(msg_dict)
 
 
-@app.on_event("startup")
-async def synch_messages(chat_id: str = None):
+async def synch_messages_old(chat_id: str = None):
     '''
     TODO: Idea is to do this periodically or upon telegram notification
 
@@ -163,6 +208,31 @@ async def synch_messages(chat_id: str = None):
                 'obj': message,
                 'dict': await download_and_update_media(tg, message),
             })
+    logger.info("Done Synchronizing Telegram Messages")
+
+
+def db_set_message(session, msg):
+    if not msg.caption:
+        pass
+    try:
+        message = session.exec(select(Message).where(
+            Message.id == msg.id)).one()
+    except sqlalchemy.exc.NoResultFound:
+        #message = Message(
+        pass
+
+
+
+@app.on_event("startup")
+async def sync_messages(chat_id: str = None):
+    return await synch_messages_old(chat_id)
+    chat_id = chat_id or "@bitcoinp2pmarketplace"
+    logger = logging.getLogger("main")
+    logger.info("Synchronizing Telegram Messages..")
+    with Session(engine) as session:
+        async with TelegramClient("my_account") as tg:
+            async for message in tg.get_chat_history(chat_id):
+                db_set_message(session, message)
     logger.info("Done Synchronizing Telegram Messages")
 
 
