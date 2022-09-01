@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+from environs import Env
 import json
 import logging
 import logging.config
@@ -15,9 +16,12 @@ import uvloop
 import uvicorn
 
 
+env = Env(expand_vars=True)
+env.read_env(".env")
 # configure logging
-logs = Path('.').joinpath('logs')
-logs.mkdir(exist_ok=True)
+with env.prefixed('P2PSTORE_'):
+    logs = Path(env('PATH', '.')).joinpath('logs')
+logs.mkdir(parents=True, exist_ok=True)
 logging.config.fileConfig(
         'logging.conf',
         defaults={'logfilename': logs/'api.log'},
@@ -49,6 +53,21 @@ async def progress(current, total):
     print(f"{current * 100 / total:.1f}%")
 
 
+class MessageMedia(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    path: Union[str, None]
+    thumb_path: Union[str, None]
+    type: str = "photo"
+
+
+# configure database
+with env.prefixed('P2PSTORE_'):
+    db_path = Path(env('PATH', '.')).joinpath(env('DB_NAME', 'database.db'))
+sqlite_url = f"sqlite:///{db_path}"
+engine = create_engine(sqlite_url, echo=True, future=True)
+SQLModel.metadata.create_all(engine)
+
+
 def db_get_media(msg_dict):
     msg_dict["media_type"] = None
     with Session(engine) as session:
@@ -64,32 +83,23 @@ def db_get_media(msg_dict):
     return msg_dict
 
 
-class MessageMedia(SQLModel, table=True):
-    id: int = Field(primary_key=True)
-    path: Union[str, None]
-    thumb_path: Union[str, None]
-    type: str = "photo"
-
-
-# configure database
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-engine = create_engine(sqlite_url, echo=True, future=True)
-SQLModel.metadata.create_all(engine)
-
-
 def db_set_media(msg_dict):
     media_dict = msg_dict[msg_dict["media_type"]]
     if not media_dict:
         return msg_dict
     with Session(engine) as session:
+        try:
+            media = session.exec(select(MessageMedia).where(
+                MessageMedia.id == msg_dict['id'])).one()
+            return msg_dict
+        except sqlalchemy.exc.NoResultFound:
+            pass
         media = MessageMedia(
             id=msg_dict['id'],
             path=media_dict["file_path"],
             thumb_path=media_dict["thumb_path"],
             type=msg_dict["media_type"],
         )
-        print(media)
         session.add(media)
         session.commit()
     return msg_dict
@@ -98,7 +108,8 @@ def db_set_media(msg_dict):
 async def download_and_update_media(tg, message) -> dict:
     msg_dict = json.loads(str(message))
     del msg_dict['chat'] # remove redundant field
-    files = Path(f"downloads/{message.id}")
+    with env.prefixed('P2PSTORE_'):
+        files = Path(env('PATH', '.'))/f"downloads/{message.id}/"
     # TODO: check both db and filesystem
     msg_dict = db_get_media(msg_dict)
     if files.is_dir() and any(files.iterdir()):
@@ -117,7 +128,7 @@ async def download_and_update_media(tg, message) -> dict:
         "file_path": None,
         "thumb_path": None,
     })
-    fpath = await tg.download_media(message, f"downloads/{message.id}/", progress=progress)
+    fpath = await tg.download_media(message, f'{files}/', progress=progress)
     if not fpath:
         return msg_dict
     media_dict["file_path"] = fpath
@@ -163,10 +174,10 @@ async def get_message(
     if not msg_id:
         return sorted([message['obj'].id for message in messages])
     msg = [m for m in messages if m['obj'].id == msg_id]
-    msg = msg[0]['obj'] if msg else None
+    msg_dict = msg[0]['dict'] if msg else None
     if not thumb:
         return msg_dict
-    fpath = Path(f"downloads/{msg.id}")
+    fpath = Path(f"downloads/{msg_dict['id']}")
     if fpath.is_dir() and any(fpath.iterdir()):
         # If more than one, the order will likely be first in at
         # last place, pick the first one

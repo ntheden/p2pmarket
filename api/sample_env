@@ -1,0 +1,4 @@
+#
+# rename this file to .env
+#
+export P2PSTORE_PATH=${HOME}/.local/share/p2pstore
