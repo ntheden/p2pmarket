@@ -97,7 +97,7 @@ class User(SQLModel, table=True):
 
 class Message(SQLModel, table=True):
     id: int = Field(primary_key=True)
-    caption: str = ""
+    caption: str = "" # caption or text
     date: str # is this str
     is_deleted: bool = False
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
@@ -193,24 +193,6 @@ async def download_and_update_media(tg, message) -> dict:
     return db_set_media(msg_dict)
 
 
-async def synch_messages_old(chat_id: str = None):
-    '''
-    TODO: Idea is to do this periodically or upon telegram notification
-
-    Expecting chat_id to be "@bitcoinp2pmarketplace"
-    '''
-    chat_id = chat_id or "@bitcoinp2pmarketplace"
-    logger = logging.getLogger("main")
-    logger.info("Synchronizing Telegram Messages..")
-    async with TelegramClient("my_account") as tg:
-        async for message in tg.get_chat_history(chat_id):
-            messages.append({
-                'obj': message,
-                'dict': await download_and_update_media(tg, message),
-            })
-    logger.info("Done Synchronizing Telegram Messages")
-
-
 def db_set_message(session, msg):
     if not msg.caption:
         pass
@@ -222,17 +204,35 @@ def db_set_message(session, msg):
         pass
 
 
-
 @app.on_event("startup")
 async def sync_messages(chat_id: str = None):
-    return await synch_messages_old(chat_id)
+    '''
+    TODO: Idea is to do this periodically or upon telegram notification
+
+    Expecting chat_id to be "@bitcoinp2pmarketplace"
+    '''
+    global messages
     chat_id = chat_id or "@bitcoinp2pmarketplace"
     logger = logging.getLogger("main")
     logger.info("Synchronizing Telegram Messages..")
     with Session(engine) as session:
         async with TelegramClient("my_account") as tg:
             async for message in tg.get_chat_history(chat_id):
-                db_set_message(session, message)
+                follow_on_msgs = []
+                if message.caption or message.text and message.from_user:
+                    for m in reversed([m["obj"] for m in messages]):
+                        if not m.caption and not m.text and m.from_user and (
+                                m.from_user.username == message.from_user.username):
+                            follow_on_msgs.append(m)
+                        else:
+                            break
+                if follow_on_msgs:
+                    messages = messages[:-len(follow_on_msgs)]
+                messages.append({
+                    "obj": message,
+                    "dict": await download_and_update_media(tg, message),
+                    "follow-ons": follow_on_msgs
+                })
     logger.info("Done Synchronizing Telegram Messages")
 
 
