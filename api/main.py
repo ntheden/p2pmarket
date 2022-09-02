@@ -77,7 +77,7 @@ class Reaction(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     emoji: Union[str, None]
     count: int
-    message_id: Optional[int] = Field(default=None, foreign_key="message.id")
+    message_id: Optional[int] = Field(index=True, default=None, foreign_key="message.id")
     message: Optional["Message"] = Relationship(back_populates="reactions")
 
 
@@ -85,7 +85,7 @@ class User(SQLModel, table=True):
     id: int = Field(primary_key=True)
     first_name: Union[str, None]
     last_name: Union[str, None]
-    username: str
+    username: Union[str, None]
     is_deleted: bool = False
     status: Union[str, None] # will not remain optional
     last_online_date: Union[str, None] # will not remain optional, is this str
@@ -98,7 +98,8 @@ class User(SQLModel, table=True):
 class Message(SQLModel, table=True):
     id: int = Field(primary_key=True)
     caption: str = "" # caption or text
-    date: str # is this str
+    date: Union[str, None] # is this str
+    edit_date: Union[str, None] # is this str
     is_deleted: bool = False
     user_id: Optional[int] = Field(default=None, foreign_key="user.id")
     user: Optional[User] = Relationship(back_populates="messages")
@@ -114,7 +115,7 @@ engine = create_engine(sqlite_url, echo=True, future=True)
 SQLModel.metadata.create_all(engine)
 
 
-def db_get_media(msg_dict):
+def db_get_media_old(msg_dict):
     msg_dict["media_type"] = None
     with Session(engine) as session:
         try:
@@ -129,7 +130,7 @@ def db_get_media(msg_dict):
     return msg_dict
 
 
-def db_set_media(msg_dict):
+def db_set_media_old(msg_dict):
     '''
     Creates database entry holding the media filename
     associated with this message. Also updates :msg_dict:
@@ -161,7 +162,7 @@ async def download_and_update_media(tg, message) -> dict:
     with env.prefixed('P2PSTORE_'):
         files = Path(env('PATH', '.'))/f"downloads/{message.id}/"
     # TODO: check both db and filesystem
-    msg_dict = db_get_media(msg_dict)
+    msg_dict = db_get_media_old(msg_dict)
     if files.is_dir() and any(files.iterdir()):
         # already something there. can't verify they are all there or file
         # integrity, good enough though
@@ -190,18 +191,102 @@ async def download_and_update_media(tg, message) -> dict:
             media.thumbs[0].file_id,
             fpath.parent.joinpath(thumb_dict["file_name"]),
         )
-    return db_set_media(msg_dict)
+    return db_set_media_old(msg_dict)
 
 
-def db_set_message(session, msg):
-    if not msg.caption:
-        pass
+def db_set_reactions(session, msg):
+    return [
+        Reaction(
+            count=reaction.count,
+            emoji=reaction.emoji
+        ) for reaction in msg.reactions
+    ]
+
+
+async def db_set_user(session, usr, tg):
+    usr_dict = json.loads(str(usr))
+    try:
+        user = session.exec(select(User).where(
+            User.id == usr.id)).one()
+    except sqlalchemy.exc.NoResultFound:
+        user = User(id=usr.id)
+    # update fields that could have changed
+    user.username=usr_dict.get('username')
+    user.first_name = usr.first_name
+    user.last_name = usr.last_name
+    user.is_deleted = usr_dict.get('is_delete', False)
+    user.status = usr_dict.get('status')
+    user.last_online_date = usr.last_online_date
+    if user.media_name and not Flags.redownload:
+        return user
+    if not usr.photo:
+        return user
+    with env.prefixed('P2PSTORE_'):
+        dest = Path(env('PATH', '.'))/f"downloads/users/{usr.id}/"
+    dpath = await tg.download_media(usr.photo.big_file_id, f"{dest}/")
+    user.media_name = Path(dpath).name
+    if usr.photo.small_file_id:
+        dpath = await tg.download_media(usr.photo.small_file_id, f"{dest}/")
+        user.thumb_name = Path(dpath).name
+    return user
+
+
+async def db_set_media(session, msg, container_msg, tg):
+    logging.getLogger("main").info(f'checking media for msg {msg.id}')
+    media = msg.photo or msg.video
+    if not media:
+        # there are many other types of media, only interested in these two
+        return None
+    db_media = Media()
+    db_media.type = "photo" if msg.photo else "video"
+    with env.prefixed('P2PSTORE_'):
+        dest = Path(env('PATH', '.'))/f"downloads/messages/{msg.id}/"
+    db_media.path = str(dest)
+    fpath = await tg.download_media(msg, f"{dest}/")
+    if not fpath:
+        return db_media
+    fpath = Path(fpath)
+    db_media.name = fpath.name
+    if media.thumbs:
+        thumb = await tg.download_media(
+            media.thumbs[0].file_id,
+            fpath.parent.joinpath('thumb-'+fpath.name),
+        )
+        if thumb:
+            db_media.thumb_name = Path(thumb).name
+    return db_media
+
+
+async def db_set_message(session, msg_item, tg):
+    msg = msg_item['obj']
+    user = await db_set_user(session, msg.from_user, tg)
     try:
         message = session.exec(select(Message).where(
             Message.id == msg.id)).one()
     except sqlalchemy.exc.NoResultFound:
-        #message = Message(
-        pass
+        message = Message(
+            id=msg.id,
+            caption=(msg.caption or msg.text),
+            date=msg.date,
+            edit_date=msg.edit_date,
+            user=user,
+        )
+    if msg.reactions:
+        # XXX TODO: delete existing message reactions
+        message.reactions = db_set_reactions(session, msg)
+    if message.media and not Flags.redownload:
+        return message
+    medias = []
+    media = await db_set_media(session, msg, msg, tg)
+    if media:
+        medias.append(media)
+    if msg_item['follow-ons']:
+        for fmsg in msg_item['follow-ons']:
+            media = await db_set_media(session, fmsg, msg, tg)
+            if media:
+                medias.append(media)
+    message.media = medias
+    return message
 
 
 @app.on_event("startup")
@@ -218,6 +303,9 @@ async def sync_messages(chat_id: str = None):
     with Session(engine) as session:
         async with TelegramClient("my_account") as tg:
             async for message in tg.get_chat_history(chat_id):
+                if not message.from_user:
+                    # not associated with a user, punt
+                    continue
                 follow_on_msgs = []
                 if message.caption or message.text and message.from_user:
                     for m in reversed([m["obj"] for m in messages]):
@@ -228,11 +316,15 @@ async def sync_messages(chat_id: str = None):
                             break
                 if follow_on_msgs:
                     messages = messages[:-len(follow_on_msgs)]
-                messages.append({
+                msg_item = {
                     "obj": message,
                     "dict": await download_and_update_media(tg, message),
                     "follow-ons": follow_on_msgs
-                })
+                }
+                messages.append(msg_item)
+                db_message = await db_set_message(session, msg_item, tg)
+                session.add(db_message)
+        session.commit()
     logger.info("Done Synchronizing Telegram Messages")
 
 
