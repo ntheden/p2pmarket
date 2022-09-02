@@ -7,6 +7,8 @@ import logging.config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
+import PIL
+from PIL import Image
 from pathlib import Path
 from pyrogram import Client as TelegramClient
 import sqlalchemy
@@ -47,6 +49,45 @@ app.add_middleware(
 class Flags:
     redownload = False
 messages = []
+
+
+def make_thumb_aspect(impath: Path, im: Image, size: tuple):
+    '''
+    Create a square thumbnail of image with preserved aspect ratio.
+    '''
+    final_size = size[0]
+    ratio = float(final_size) / max(im.size)
+    new_image_size = tuple([int(x*ratio) for x in im.size])
+    im = im.resize(new_image_size, PIL.Image.ANTIALIAS)
+    thumb = PIL.Image.new("RGB", (final_size, final_size))
+    thumb.paste(im, ((final_size-new_image_size[0])//2, (final_size-new_image_size[1])//2))
+    thumb_path = impath.parent.joinpath(f'thumb-{impath.stem}.jpg')
+    thumb.save(thumb_path, 'JPEG', quality=90)
+    return thumb_path
+
+
+def make_thumb_stretch(impath: Path, im: PIL.Image, size: tuple):
+    '''
+    Creates a stretched square thumbnail of image.
+    '''
+    logger.info(f'Creating {size} thumb of {impath}')
+    thumb = im.resize(size, PIL.Image.ANTIALIAS)
+    thumb_path = impath.parent.joinpath(f'thumb-{impath.stem}.jpg')
+    thumb.save(thumb_path, 'JPEG', quality=90)
+    return thumb_path
+
+
+def make_thumb(impath, size=(360, 360)):
+    logger = logging.getLogger("main")
+    if impath.name.startswith("thumb-") and (impath.suffix == '.jpg'):
+        return impath
+    try:
+        im = PIL.Image.open(impath)
+    except PIL.UnidentifiedImageError as e:
+        logger.info(e)
+        return None
+    logger.info(f'Creating thumb of {impath}')
+    return make_thumb_aspect(impath, im, size)
 
 
 async def progress(current, total):
@@ -157,6 +198,9 @@ def db_set_media_old(msg_dict):
 
 
 async def download_and_update_media(tg, message) -> dict:
+    '''
+    Deprecated
+    '''
     msg_dict = json.loads(str(message))
     del msg_dict['chat'] # remove redundant field
     with env.prefixed('P2PSTORE_'):
@@ -186,11 +230,7 @@ async def download_and_update_media(tg, message) -> dict:
     media_dict["file_name"] = fpath.name
     if media.thumbs:
         thumb_dict = media_dict["thumbs"][0]
-        thumb_dict["file_name"] = 'thumb-'+fpath.name
-        thumb = await tg.download_media(
-            media.thumbs[0].file_id,
-            fpath.parent.joinpath(thumb_dict["file_name"]),
-        )
+        thumb_dict["file_name"] = make_thumb(fpath)
     return db_set_media_old(msg_dict)
 
 
@@ -247,10 +287,14 @@ async def db_set_media(session, msg, container_msg, tg):
         return db_media
     fpath = Path(fpath)
     db_media.name = fpath.name
-    if media.thumbs:
+    if db_media.type == "photo":
+        thumb = make_thumb(fpath)
+        db_media.thumb_name = thumb.name if thumb else None
+    elif media.thumbs:
+        # use the provided thumb for videos, if provided
         thumb = await tg.download_media(
             media.thumbs[0].file_id,
-            fpath.parent.joinpath('thumb-'+fpath.name),
+            fpath.parent.joinpath('thumb-'+fpath.name), # XXX might be wrong ext
         )
         if thumb:
             db_media.thumb_name = Path(thumb).name
@@ -291,6 +335,38 @@ async def db_set_message(session, msg_item, tg):
 
 @app.on_event("startup")
 async def sync_messages(chat_id: str = None):
+    '''
+    TODO: Idea is to do this periodically or upon telegram notification
+
+    Expecting chat_id to be "@bitcoinp2pmarketplace"
+    '''
+    global messages
+    chat_id = chat_id or "@bitcoinp2pmarketplace"
+    logger = logging.getLogger("main")
+    logger.info("Synchronizing Telegram Messages..")
+    async with TelegramClient("my_account") as tg:
+        async for message in tg.get_chat_history(chat_id):
+            if not message.from_user:
+                # not associated with a user, punt
+                continue
+            follow_on_msgs = []
+            if message.caption or message.text and message.from_user:
+                for m in reversed([m["obj"] for m in messages]):
+                    if not m.caption and not m.text and m.from_user and (
+                            m.from_user.username == message.from_user.username):
+                        follow_on_msgs.append(m)
+                    else:
+                        break
+            if follow_on_msgs:
+                messages = messages[:-len(follow_on_msgs)]
+            msg_item = {
+                "obj": message,
+                "dict": await download_and_update_media(tg, message),
+                "follow-ons": follow_on_msgs
+            }
+            messages.append(msg_item)
+    logger.info("Done Synchronizing Telegram Messages")
+async def sync_messages_new(chat_id: str = None):
     '''
     TODO: Idea is to do this periodically or upon telegram notification
 
@@ -357,7 +433,7 @@ async def get_message(
         if photo or not thumb_name:
             return FileResponse(path)
         return FileResponse(thumb_name)
-    return FileResponse("downloads/shopping-bag.png")
+    return FileResponse("downloads/no-image.jpg")
 
 
 if __name__=="__main__":
