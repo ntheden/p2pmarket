@@ -149,6 +149,7 @@ class Message(SQLModel, table=True):
     user: Optional[User] = Relationship(back_populates="messages")
     media: Optional[list["Media"]] = Relationship(back_populates="message")
     reactions: Optional[list["Reaction"]] = Relationship(back_populates="message")
+    #hashtags: Optional[list["Hashtags"]] = Relationship(back_populates="message")
 
 
 # configure database
@@ -322,6 +323,7 @@ async def db_set_message(session, msg_item, tg):
         )
     logger = logging.getLogger("main")
     message.user = user
+    #message.caption, message.hashtags = parse_caption(msg.caption or msg.text)
     message.caption = (msg.caption or msg.text)
     message.date = msg.date
     message.edit_date = msg.edit_date
