@@ -22,10 +22,10 @@ export const App = () => {
         const getMsg = async () => {
           try {
               let response = await axios.get(
-                `http://localhost:8001/telegram/@bitcoinp2pmarketplace?msg_id=${msgId}`
+                `http://localhost:8001/v1/telegram/@bitcoinp2pmarketplace?msg_id=${msgId}`
               );
               setMsg(response.data);
-              setFromUser(response.data.from_user);
+              setFromUser(response.data.user);
               console.log("message", response);
           } catch(err) {
               console.log(err);

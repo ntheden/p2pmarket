@@ -25,7 +25,7 @@ export const Info = ({msg}: any) => {
                 <div className={styles.commentsAndLikesBar}>
                     <span className={styles.likes}>20 likes</span>
                     <p className={styles.title}>
-                        <Username username={msg.from_user.username} /> {msg.caption || msg.text}
+                        <Username username={msg.user.username} /> {msg.caption}
                     </p>
                     <span className={styles.ago}>19 hours ago</span>
                 </div>

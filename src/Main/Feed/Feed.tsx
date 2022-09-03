@@ -8,6 +8,7 @@ import { Footer } from './Footer/Footer';
 import styles from './Feed.module.scss';
 
 export const Feed = ({msg}: any) => {
+
     return (
         <>
         {Object.keys(msg).length === 0 ? (
@@ -19,7 +20,7 @@ export const Feed = ({msg}: any) => {
               <Header />
               <Image
                   className="w-614"
-                  src={`http://localhost:8001/telegram/@bitcoinp2pmarket?msg_id=${msg.id}&photo=1`}
+                  src={`http://localhost:8001/v1/telegram/media/${msg.media[0].name}`}
               />
               <Info msg={msg} />
               <Footer />

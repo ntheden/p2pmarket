@@ -17,7 +17,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
         const getIds = async () => {
           try {
               let response = await axios.get(
-                `http://localhost:8001/telegram/@bitcoinp2pmarketplace`
+                `http://localhost:8001/v1/telegram/@bitcoinp2pmarketplace`
               );
               setAllOfferIds(response.data);
               console.log("allOfferIds are:");
@@ -46,7 +46,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
                  ) : (
                     <Image
                         className="w-80"
-                        src={`http://localhost:8001/telegram/@bitcoinp2pmarket?msg_id=${randomId}&thumb=1`}
+                        src={`http://localhost:8001/v1/telegram/@bitcoinp2pmarket?msg_id=${randomId}&thumb=1`}
                         roundedCircle={true}
                         thumbnail={true}
                     />
