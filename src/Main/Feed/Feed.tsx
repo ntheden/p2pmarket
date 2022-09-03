@@ -8,6 +8,18 @@ import { Footer } from './Footer/Footer';
 import styles from './Feed.module.scss';
 
 export const Feed = ({msg}: any) => {
+    const [imageName, setImageName] = useState<string>("no-image.jpg");
+
+    useEffect(() => {
+        if (Object.keys(msg).length === 0) {
+            return;
+        }
+        if (msg.media.length === 0) {
+            setImageName("no-image.jpg");
+        } else {
+            setImageName(msg.media[0].name);
+        }
+    }, [msg]);
 
     return (
         <>
@@ -20,7 +32,7 @@ export const Feed = ({msg}: any) => {
               <Header />
               <Image
                   className="w-614"
-                  src={`http://localhost:8001/v1/telegram/media/${msg.media[0].name}`}
+                  src={`http://localhost:8001/v1/telegram/media/${imageName}`}
               />
               <Info msg={msg} />
               <Footer />
