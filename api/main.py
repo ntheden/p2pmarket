@@ -344,6 +344,19 @@ async def db_set_message(session, msg_item, tg):
     return message
 
 
+def set_no_image(session):
+    try:
+        media = session.exec(select(Media).where(
+            Media.name == "no-image.jpg")).one()
+    except sqlalchemy.exc.NoResultFound:
+        media = Media(
+            name="no-image.jpg",
+            type="photo",
+            path="static/",
+        )
+    return media
+
+
 @app.on_event("startup")
 async def sync_messages(chat_id: str = None):
     '''
@@ -355,6 +368,8 @@ async def sync_messages(chat_id: str = None):
     chat_id = chat_id or "@bitcoinp2pmarketplace"
     logger = logging.getLogger("main")
     logger.info("Synchronizing Telegram Messages..")
+    with Session(engine) as session:
+        set_no_image(session)
     async with TelegramClient("my_account") as tg:
         async for message in tg.get_chat_history(chat_id):
             if not message.from_user or not (message.caption or message.text):
