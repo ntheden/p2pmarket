@@ -108,12 +108,14 @@ class Media(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: Union[str, None]
     size: Union[int, None] # TODO
-    thumb_name: Union[str, None]
     thumb_size: Union[int, None] # TODO
-    type: str = "photo"
+    type: Union[str, None]
     path: str = Union[str, None]
+    # owned by either a message or a user, but not both
     message_id: Optional[int] = Field(default=None, foreign_key="message.id")
     message: Optional["Message"] = Relationship(back_populates="media")
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    user: Optional["User"] = Relationship(back_populates="media")
 
 
 class Reaction(SQLModel, table=True):
@@ -132,9 +134,8 @@ class User(SQLModel, table=True):
     is_deleted: bool = False
     status: Union[str, None] # will not remain optional
     last_online_date: Union[str, None] # will not remain optional, is this str
-    media_name: Union[str, None]
-    thumb_name: Union[str, None]
-    media_type: str = "photo"
+    thumb_name: Union[str, None] # using telegram's thumb for now
+    media: Optional[list["Media"]] = Relationship(back_populates="user")
     messages: Optional[list["Message"]] = Relationship(back_populates="user")
 
 
@@ -260,14 +261,18 @@ async def db_set_user(session, usr, tg):
     user.is_deleted = usr_dict.get('is_delete', False)
     user.status = usr_dict.get('status')
     user.last_online_date = usr.last_online_date
-    if user.media_name and not Flags.redownload:
-        return user
     if not usr.photo:
         return user
+    if user.media and not Flags.redownload:
+        return user
+    if not user.media:
+        user.media = [Media()]
+    media = user.media[0]
+    media.path = f"downloads/users/{user.id}/"
     with env.prefixed('P2PSTORE_'):
-        dest = Path(env('PATH', '.'))/f"downloads/users/{usr.id}/"
+        dest = Path(env('PATH', '.'))/media.path
     dpath = await tg.download_media(usr.photo.big_file_id, f"{dest}/")
-    user.media_name = Path(dpath).name
+    media.name = Path(dpath).name
     if usr.photo.small_file_id:
         dpath = await tg.download_media(usr.photo.small_file_id, f"{dest}/")
         user.thumb_name = Path(dpath).name
@@ -292,16 +297,15 @@ async def db_set_media(session, msg, container_msg, tg):
     fpath = Path(fpath)
     db_media.name = fpath.name
     if db_media.type == "photo":
+        # TODO: set db_media.thumb_size
         thumb = make_thumb(fpath)
-        db_media.thumb_name = thumb.name if thumb else None
     elif media.thumbs:
         # use the provided thumb for videos, if provided
+        # TODO Error checking
         thumb = await tg.download_media(
             media.thumbs[0].file_id,
             fpath.parent.joinpath('thumb-'+fpath.name), # XXX might be wrong ext
         )
-        if thumb:
-            db_media.thumb_name = Path(thumb).name
     return db_media
 
 
@@ -380,26 +384,6 @@ async def sync_messages(chat_id: str = None):
     logger.info("Done Synchronizing Telegram Messages")
 
 
-@app.get("/v1/telegram/media/{name}")
-async def get_media(
-        name: str,
-        thumb: Union[bool, None] = None
-    ) -> FileResponse:
-    if thumb:
-        name = f"thumb-{name}"
-    try:
-        with Session(engine) as session:
-            media = session.exec(select(Media).where(
-                Media.name == name)).one()
-    except sqlalchemy.exc.NoResultFound:
-        return FileResponse("static/no-image.jpg")
-    with env.prefixed('P2PSTORE_'):
-        fpath = Path(env('PATH', '.'))/media.path
-    if (fpath/name).is_file():
-        return FileResponse(fpath)
-    return FileResponse("static/no-image.jpg")
-
-
 @app.get("/v1/telegram/{chat_id}")
 async def get_message(
         chat_id: str,
@@ -422,6 +406,7 @@ async def get_message(
                 return {
                     "message": message,
                     "user": message.user,
+                    "user_media": message.user.media,
                     "media": media,
                     "reactions": message.reactions,
                 }
@@ -430,11 +415,33 @@ async def get_message(
     if not media:
         return FileResponse("static/no-image.jpg")
     with env.prefixed('P2PSTORE_'):
-        fpath = Path(env('PATH', '.'))/f"downloads/messages/{message.id}/"
-    fpath = fpath/media[0].thumb_name
+        fpath = Path(env('PATH', '.'))/media[0].path
+    fpath = fpath/f"thumb-{media[0].name}"
     if not fpath.is_file():
         return FileResponse("static/no-image.jpg")
     return FileResponse(fpath)
+
+
+@app.get("/v1/telegram/media/{name}")
+async def get_media(
+        name: str,
+        thumb: Union[bool, None] = None
+    ) -> FileResponse:
+    try:
+        with Session(engine) as session:
+            media = session.exec(select(Media).where(
+                Media.name == name)).one()
+            if thumb:
+                name = f"thumb-{name}"
+                if media.user:
+                    name = media.user.thumb_name
+    except sqlalchemy.exc.NoResultFound:
+        return FileResponse("static/no-image.jpg")
+    with env.prefixed('P2PSTORE_'):
+        fpath = (Path(env('PATH', '.'))/media.path)/name
+    if (fpath).is_file():
+        return FileResponse(fpath)
+    return FileResponse("static/no-image.jpg")
 
 
 @app.get("/telegram/{chat_id}")
