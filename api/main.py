@@ -26,7 +26,7 @@ with env.prefixed('P2PSTORE_'):
 logs.mkdir(parents=True, exist_ok=True)
 logging.config.fileConfig(
         'logging.conf',
-        defaults={'logfilename': logs/'api.log'},
+        defaults={'logpath': logs},
         disable_existing_loggers=False
 )
 # for pyrogram speedup
@@ -105,9 +105,11 @@ class MessageMedia(SQLModel, table=True):
 
 
 class Media(SQLModel, table=True):
-    id: int = Field(primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: Union[str, None]
+    size: Union[int, None] # TODO
     thumb_name: Union[str, None]
+    thumb_size: Union[int, None] # TODO
     type: str = "photo"
     path: str = Union[str, None]
     message_id: Optional[int] = Field(default=None, foreign_key="message.id")
@@ -244,6 +246,7 @@ def db_set_reactions(session, msg):
 
 
 async def db_set_user(session, usr, tg):
+    assert usr, f'What happened to {usr}'
     usr_dict = json.loads(str(usr))
     try:
         user = session.exec(select(User).where(
@@ -277,11 +280,12 @@ async def db_set_media(session, msg, container_msg, tg):
     if not media:
         # there are many other types of media, only interested in these two
         return None
+    # XXX TODO: delete existing message media objects
     db_media = Media()
     db_media.type = "photo" if msg.photo else "video"
+    db_media.path = f"downloads/messages/{msg.id}/"
     with env.prefixed('P2PSTORE_'):
-        dest = Path(env('PATH', '.'))/f"downloads/messages/{msg.id}/"
-    db_media.path = str(dest)
+        dest = Path(env('PATH', '.'))/db_media.path
     fpath = await tg.download_media(msg, f"{dest}/")
     if not fpath:
         return db_media
@@ -303,6 +307,7 @@ async def db_set_media(session, msg, container_msg, tg):
 
 async def db_set_message(session, msg_item, tg):
     msg = msg_item['obj']
+    assert msg.from_user, f'What happened to {msg.from_user}'
     user = await db_set_user(session, msg.from_user, tg)
     try:
         message = session.exec(select(Message).where(
@@ -310,15 +315,17 @@ async def db_set_message(session, msg_item, tg):
     except sqlalchemy.exc.NoResultFound:
         message = Message(
             id=msg.id,
-            caption=(msg.caption or msg.text),
-            date=msg.date,
-            edit_date=msg.edit_date,
-            user=user,
         )
+    logger = logging.getLogger("main")
+    message.user = user
+    message.caption = (msg.caption or msg.text)
+    message.date = msg.date
+    message.edit_date = msg.edit_date
     if msg.reactions:
         # XXX TODO: delete existing message reactions
         message.reactions = db_set_reactions(session, msg)
     if message.media and not Flags.redownload:
+        # TODO: check message edit date
         return message
     medias = []
     media = await db_set_media(session, msg, msg, tg)
@@ -346,8 +353,9 @@ async def sync_messages(chat_id: str = None):
     logger.info("Synchronizing Telegram Messages..")
     async with TelegramClient("my_account") as tg:
         async for message in tg.get_chat_history(chat_id):
-            if not message.from_user:
-                # not associated with a user, punt
+            if not message.from_user or not (message.caption or message.text):
+                logger.info(f"{message.id} has no user and no text, SKIP")
+                # not associated with a user, and empty message, punt
                 continue
             follow_on_msgs = []
             if message.caption or message.text and message.from_user:
@@ -361,51 +369,76 @@ async def sync_messages(chat_id: str = None):
                 messages = messages[:-len(follow_on_msgs)]
             msg_item = {
                 "obj": message,
-                "dict": await download_and_update_media(tg, message),
+                "dict": json.loads(str(message)), #await download_and_update_media(tg, message),
                 "follow-ons": follow_on_msgs
             }
             messages.append(msg_item)
-    logger.info("Done Synchronizing Telegram Messages")
-async def sync_messages_new(chat_id: str = None):
-    '''
-    TODO: Idea is to do this periodically or upon telegram notification
-
-    Expecting chat_id to be "@bitcoinp2pmarketplace"
-    '''
-    global messages
-    chat_id = chat_id or "@bitcoinp2pmarketplace"
-    logger = logging.getLogger("main")
-    logger.info("Synchronizing Telegram Messages..")
-    with Session(engine) as session:
-        async with TelegramClient("my_account") as tg:
-            async for message in tg.get_chat_history(chat_id):
-                if not message.from_user:
-                    # not associated with a user, punt
-                    continue
-                follow_on_msgs = []
-                if message.caption or message.text and message.from_user:
-                    for m in reversed([m["obj"] for m in messages]):
-                        if not m.caption and not m.text and m.from_user and (
-                                m.from_user.username == message.from_user.username):
-                            follow_on_msgs.append(m)
-                        else:
-                            break
-                if follow_on_msgs:
-                    messages = messages[:-len(follow_on_msgs)]
-                msg_item = {
-                    "obj": message,
-                    "dict": await download_and_update_media(tg, message),
-                    "follow-ons": follow_on_msgs
-                }
-                messages.append(msg_item)
+            with Session(engine) as session:
                 db_message = await db_set_message(session, msg_item, tg)
                 session.add(db_message)
-        session.commit()
+                session.commit()
     logger.info("Done Synchronizing Telegram Messages")
+
+
+@app.get("/v1/telegram/media/{name}")
+async def get_media(
+        name: str,
+        thumb: Union[bool, None] = None
+    ) -> FileResponse:
+    if thumb:
+        name = f"thumb-{name}"
+    try:
+        with Session(engine) as session:
+            media = session.exec(select(Media).where(
+                Media.name == name)).one()
+    except sqlalchemy.exc.NoResultFound:
+        return FileResponse("static/no-image.jpg")
+    with env.prefixed('P2PSTORE_'):
+        fpath = Path(env('PATH', '.'))/media.path
+    if (fpath/name).is_file():
+        return FileResponse(fpath)
+    return FileResponse("static/no-image.jpg")
+
+
+@app.get("/v1/telegram/{chat_id}")
+async def get_message(
+        chat_id: str,
+        msg_id: Union[int, None] = None,
+        thumb: Union[bool, None] = None
+    ) -> Union[FileResponse, dict]:
+    global messages
+    if msg_id is None:
+        return sorted([m['obj'].id for m in messages])
+    msg = [m for m in messages if m['obj'].id == msg_id]
+    msg = msg[0] if msg else None
+    if not msg:
+        return {}
+    try:
+        with Session(engine) as session:
+            message = session.exec(select(Message).where(
+                Message.id == msg['obj'].id)).one()
+            media = message.media
+            if not thumb:
+                return {
+                    "message": message,
+                    "user": message.user,
+                    "media": media,
+                    "reactions": message.reactions,
+                }
+    except sqlalchemy.exc.NoResultFound:
+        return {}
+    if not media:
+        return FileResponse("static/no-image.jpg")
+    with env.prefixed('P2PSTORE_'):
+        fpath = Path(env('PATH', '.'))/f"downloads/messages/{message.id}/"
+    fpath = fpath/media[0].thumb_name
+    if not fpath.is_file():
+        return FileResponse("static/no-image.jpg")
+    return FileResponse(fpath)
 
 
 @app.get("/telegram/{chat_id}")
-async def get_message(
+async def get_message_old(
         chat_id: str,
         msg_id: Union[int, None] = None,
         thumb: Union[bool, None] = None,
@@ -433,7 +466,7 @@ async def get_message(
         if photo or not thumb_name:
             return FileResponse(path)
         return FileResponse(thumb_name)
-    return FileResponse("downloads/no-image.jpg")
+    return FileResponse("static/no-image.jpg")
 
 
 if __name__=="__main__":
