@@ -34,7 +34,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
     }
 
     useEffect(() => {
-        const randomOfferisTemp = Array.from(
+        const randomOfferTempArray = Array.from(
             { length: 12 },
             () => allOfferIds[Math.floor(Math.random() * allOfferIds.length)],
         ).map((randomId, index) => (
@@ -53,7 +53,9 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
                  )}
             </ListGroup.Item>
         ));
-        setRandomOffers(randomOfferisTemp);
+        setRandomOffers(randomOfferTempArray);
+        // random initial selection
+        carouselSelection(allOfferIds[Math.floor(Math.random() * allOfferIds.length)])
         console.log("randomOffers are:")
         console.log(randomOffers)
     }, [allOfferIds]);

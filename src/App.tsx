@@ -10,12 +10,7 @@ import { Feed } from './Main/Feed/Feed';
 
 export const App = () => {
     const [msgId, setMsgId] = useState<number>(0);
-    const [me] = useState({
-        username: 'azizoid',
-        fullName: 'Aziz Shahhuseynov',
-        image: 'https://picsum.photos/56',
-    });
-    const [msg, setMsg] = useState<any>({});
+    const [data, setData] = useState<any>({});
     const [fromUser, setFromUser] = useState<any>({});
 
     useEffect(() => {
@@ -24,7 +19,7 @@ export const App = () => {
               let response = await axios.get(
                 `http://localhost:8001/v1/telegram/@bitcoinp2pmarketplace?msg_id=${msgId}`
               );
-              setMsg(response.data);
+              setData(response.data);
               setFromUser(response.data.user);
               console.log("message", response);
           } catch(err) {
@@ -49,7 +44,7 @@ export const App = () => {
             <Row className={styles.main}>
                 <Col md={{ offset: 2, span: 6 }}>
                     <OffersBar handleMsgIdChange={setId}/>
-                    <Feed msg={msg}/>
+                    <Feed data={data}/>
                 </Col>
                 <Col md={{ span: 3 }}>
                     <Profile user={fromUser} />

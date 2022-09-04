@@ -7,23 +7,23 @@ import { Footer } from './Footer/Footer';
 
 import styles from './Feed.module.scss';
 
-export const Feed = ({msg}: any) => {
+export const Feed = ({data}: any) => {
     const [imageName, setImageName] = useState<string>("no-image.jpg");
 
     useEffect(() => {
-        if (Object.keys(msg).length === 0) {
+        if (Object.keys(data).length === 0) {
             return;
         }
-        if (msg.media.length === 0) {
+        if (data.media.length === 0) {
             setImageName("no-image.jpg");
         } else {
-            setImageName(msg.media[0].name);
+            setImageName(data.media[0].name);
         }
-    }, [msg]);
+    }, [data]);
 
     return (
         <>
-        {Object.keys(msg).length === 0 ? (
+        {Object.keys(data).length === 0 ? (
             <Spinner animation="border" role="status">
               <span className="visually-hidden">Loading...</span>
             </Spinner>
@@ -34,7 +34,7 @@ export const Feed = ({msg}: any) => {
                   className="w-614"
                   src={`http://localhost:8001/v1/telegram/media/${imageName}`}
               />
-              <Info msg={msg} />
+              <Info data={data} />
               <Footer />
             </Card>
          )}
