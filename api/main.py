@@ -11,6 +11,7 @@ import PIL
 from PIL import Image
 from pathlib import Path
 from pyrogram import Client as TelegramClient
+import re
 import sqlalchemy
 from sqlmodel import SQLModel, create_engine, Field, Session, select, Relationship
 from typing import Union, Optional
@@ -126,6 +127,24 @@ class Reaction(SQLModel, table=True):
     message: Optional["Message"] = Relationship(back_populates="reactions")
 
 
+class HashtagMessageLink(SQLModel, table=True):
+    hashtag_id: Optional[int] = Field(
+        default=None, foreign_key="message.id", primary_key=True
+    )
+    message_id: Optional[int] = Field(
+        default=None, foreign_key="hashtag.id", primary_key=True
+    )
+
+
+class Hashtag(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True) # lower case #hashtag
+    messages: Optional[list["Message"]] = Relationship(
+        back_populates="hashtags",
+        link_model=HashtagMessageLink
+    )
+
+
 class User(SQLModel, table=True):
     id: int = Field(primary_key=True)
     first_name: Union[str, None]
@@ -149,7 +168,10 @@ class Message(SQLModel, table=True):
     user: Optional[User] = Relationship(back_populates="messages")
     media: Optional[list["Media"]] = Relationship(back_populates="message")
     reactions: Optional[list["Reaction"]] = Relationship(back_populates="message")
-    #hashtags: Optional[list["Hashtags"]] = Relationship(back_populates="message")
+    hashtags: Optional[list[Hashtag]] = Relationship(
+        back_populates="messages",
+        link_model=HashtagMessageLink
+    )
 
 
 # configure database
@@ -323,10 +345,10 @@ async def db_set_message(session, msg_item, tg):
         )
     logger = logging.getLogger("main")
     message.user = user
-    #message.caption, message.hashtags = parse_caption(msg.caption or msg.text)
-    message.caption = (msg.caption or msg.text)
     message.date = msg.date
     message.edit_date = msg.edit_date
+    message.caption, hashtags = parse_caption(session, msg.caption or msg.text)
+    load_hashtags(session, message, hashtags)
     if msg.reactions:
         # XXX TODO: delete existing message reactions
         message.reactions = db_set_reactions(session, msg)
@@ -344,6 +366,25 @@ async def db_set_message(session, msg_item, tg):
                 medias.append(media)
     message.media = medias
     return message
+
+
+def load_hashtags(session: Session, message: Message, tags: list[str]):
+    hashtags = []
+    for tag in tags:
+        try:
+            hashtag = session.exec(select(Hashtag).where(
+                Hashtag.name == tag.lower())).one()
+        except sqlalchemy.exc.NoResultFound:
+            hashtag = Hashtag(name=tag.lower())
+        if hashtag not in message.hashtags:
+            message.hashtags.append(hashtag)
+
+
+def parse_caption(session: Session, caption: str) -> tuple[str, list]:
+    matches = re.findall("(#\D\w+)", caption)
+    for match in matches:
+        caption = caption.replace(f"{match} ", "").replace(match, "")
+    return caption, matches
 
 
 def set_no_image(session):
@@ -426,6 +467,7 @@ async def get_message(
                     "user_media": message.user.media,
                     "media": media,
                     "reactions": message.reactions,
+                    "hashtags": message.hashtags,
                 }
     except sqlalchemy.exc.NoResultFound:
         return {}
