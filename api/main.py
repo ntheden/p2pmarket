@@ -4,7 +4,7 @@ from environs import Env
 import json
 import logging
 import logging.config
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 import PIL
@@ -463,14 +463,16 @@ async def get_message(
             if not thumb:
                 return {
                     "message": message,
-                    "user": message.user,
-                    "user_media": message.user.media,
+                    "user": {
+                        **message.user.dict(),
+                        "media": message.user.media
+                    },
                     "media": media,
                     "reactions": message.reactions,
                     "hashtags": message.hashtags,
                 }
     except sqlalchemy.exc.NoResultFound:
-        return {}
+        raise HTTPException(status_code=404)
     if not media:
         return FileResponse("static/no-image.jpg")
     with env.prefixed('P2PSTORE_'):
