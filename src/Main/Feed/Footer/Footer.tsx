@@ -1,15 +1,15 @@
 import React from 'react';
 import { Card, Form } from 'react-bootstrap';
-import { BsEmojiSmile } from 'react-icons/bs';
+import { BsTelegram } from 'react-icons/bs';
 
 import styles from './Footer.module.scss';
 
 export const Footer = () => (
     <Card.Footer className={styles.footer}>
-        <BsEmojiSmile />
+        <BsTelegram />
         <Form.Control
             type="text"
-            placeholder="Add a comment..."
+            placeholder="Contact Counterparty..."
             className={styles.addCommentFormInput}
         />
     </Card.Footer>

@@ -11,6 +11,11 @@
     .threeDots {
         justify-content: flex-end;
     }
+
+    .image {
+        height: 60px;
+        width: 60px;
+    }
 }
 
 :global(.list-group-item) {

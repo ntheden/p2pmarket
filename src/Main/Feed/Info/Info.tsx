@@ -1,16 +1,18 @@
 import React, { useEffect, useState, ReactNode } from 'react';
-import { Spinner, Card, Badge } from 'react-bootstrap';
+import { Spinner, Card, Badge, ListGroup } from 'react-bootstrap';
 import { BsHeart, BsChatRight, BsTelegram, BsBookmark } from 'react-icons/bs';
 import { Username } from 'lib/ui/Username/Username';
 
 import styles from './Info.module.scss';
+import { Reactions } from './Reactions/Reactions'
+
 
 export const Info = ({data}: any) => {
     const [ago, setAgo] = useState<string>("Long time ago...");
     const [badges, setBadges] = useState<ReactNode[]>([]);
 
     useEffect(() => {
-        if (Object.keys(data).length === 0) {
+        if (data === undefined || Object.keys(data).length === 0) {
             return;
         }
         console.log(data.message.caption);
@@ -20,15 +22,17 @@ export const Info = ({data}: any) => {
         interface LayoutProps {
           name?: string;
         }
-        if (Object.keys(data).length === 0) {
+        if (data === undefined || Object.keys(data).length === 0) {
             setBadges([]);
             return;
         }
-        const hashtagNodes = data.hashtags.map(({name}: LayoutProps) => {
+        const hashtagNodes = data.hashtags.map(({name}: LayoutProps, index: number) => {
             return (
-              <Badge>
-                {name}
-              </Badge>
+              <ListGroup.Item key={index} className={styles.hashtag}>
+                  <Badge>
+                      {name}
+                  </Badge>
+              </ListGroup.Item>
             );
         });
         setBadges(hashtagNodes);
@@ -44,18 +48,15 @@ export const Info = ({data}: any) => {
             <Card.Body className={styles.info}>
                 <div className={styles.reactionsBar}>
                     <div>
-                        <BsHeart />
-                        <BsChatRight />
-                        <BsTelegram />
+                        <Reactions data={data}/>
                     </div>
                     <BsBookmark />
                 </div>
                 <div className={styles.commentsAndLikesBar}>
-                    <span className={styles.likes}>
-                    "reaction count" reactions
-                    </span>
                     <span className={styles.caption}>
-                        {badges}
+                        <ListGroup horizontal className={styles.hashtagsBar}>
+                            {badges}
+                        </ListGroup>
                         {data.message.caption}
                     </span>
                     <span className={styles.ago}>{ago}</span>
