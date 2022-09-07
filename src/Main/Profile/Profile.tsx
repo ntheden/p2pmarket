@@ -19,7 +19,7 @@ export const Profile = ({user}: any) => {
                     <Col md={{ span: 3 }}>
                         <Image
                             className="w-56"
-                            src='https://picsum.photos/56'
+                            src='generic-user.jpg'
                             roundedCircle={true}
                             thumbnail={true}
                         />

@@ -9,7 +9,7 @@ import { Reactions } from './Reactions/Reactions'
 
 export const Info = ({data}: any) => {
     const [ago, setAgo] = useState<string>("Long time ago...");
-    const [badges, setBadges] = useState<ReactNode[]>([]);
+    const [hashtags, setHashtags] = useState<ReactNode[]>([]);
 
     useEffect(() => {
         if (data === undefined || Object.keys(data).length === 0) {
@@ -23,7 +23,7 @@ export const Info = ({data}: any) => {
           name?: string;
         }
         if (data === undefined || Object.keys(data).length === 0) {
-            setBadges([]);
+            setHashtags([]);
             return;
         }
         const hashtagNodes = data.hashtags.map(({name}: LayoutProps, index: number) => {
@@ -35,7 +35,7 @@ export const Info = ({data}: any) => {
               </ListGroup.Item>
             );
         });
-        setBadges(hashtagNodes);
+        setHashtags(hashtagNodes);
     }, [data]);
 
     return (
@@ -55,7 +55,7 @@ export const Info = ({data}: any) => {
                 <div className={styles.commentsAndLikesBar}>
                     <span className={styles.caption}>
                         <ListGroup horizontal className={styles.hashtagsBar}>
-                            {badges}
+                            {hashtags}
                         </ListGroup>
                         {data.message.caption}
                     </span>

@@ -4,7 +4,6 @@ import styles from './App.module.scss';
 import { Col, Row } from 'react-bootstrap';
 import { NavbarLayout } from './Main/Navbar/Navbar';
 import { OffersBar, FuncProps } from './Main/OffersBar/OffersBar';
-import { Profile } from './Main/Profile/Profile';
 import { Feed, LoadingUser } from './Main/Feed/Feed';
 
 
@@ -45,12 +44,9 @@ export const App = () => {
             </Row>
 
             <Row className={styles.main}>
-                <Col md={{ offset: 2, span: 6 }}>
+                <Col md={{ offset: 2, span: 8 }}>
                     <OffersBar handleMsgIdChange={setId}/>
                     <Feed data={data}/>
-                </Col>
-                <Col md={{ span: 3 }}>
-                    <Profile user={user} />
                 </Col>
             </Row>
         </div>
