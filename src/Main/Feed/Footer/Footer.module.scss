@@ -2,19 +2,12 @@
     display: flex;
     justify-content: flex-start;
     align-content: center;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    padding: 2px;
     background: white;
 
-    svg {
-        height: 24px;
-        width: 24px;
-        margin-right: 8px;
-    }
-
-    .addCommentFormInput {
-        border: none;
-        height: 24px;
-        font-size: 0.9em;
+    #button {
+        padding: 4px;
+        width: 100%;
+        font-size: 1.3em;
     }
 }
