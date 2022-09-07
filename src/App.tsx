@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './App.module.scss';
 import { Col, Row } from 'react-bootstrap';
 import { NavbarLayout } from './Main/Navbar/Navbar';
-import { OffersBar, FuncProps } from './Main/OffersBar/OffersBar';
+import { OffersBar } from './Main/OffersBar/OffersBar';
 import { Feed, LoadingUser } from './Main/Feed/Feed';
 
 

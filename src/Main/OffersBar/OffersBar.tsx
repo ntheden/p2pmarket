@@ -1,8 +1,9 @@
 import axios from "axios";
 import React, { useEffect, useState, ReactNode } from 'react';
-import { Carousel, ListGroup, Spinner } from 'react-bootstrap';
+import { Button, Carousel, ListGroup, Spinner } from 'react-bootstrap';
 import Image from 'react-bootstrap/Image';
 
+import { CarouselControls, ControlProps } from './CarouselControls/CarouselControls'
 import styles from "./OffersBar.module.scss"
 
 export interface FuncProps {
@@ -12,6 +13,8 @@ export interface FuncProps {
 export const OffersBar = (props: FuncProps): JSX.Element => {
     const [randomOffers, setRandomOffers] = useState<ReactNode[]>([]);
     const [allOfferIds, setAllOfferIds] = useState<number[]>([]);
+    const [carouselIndex, setCarouselIndex] = useState<number>(0);
+    const [maxIndex, setMaxIndex] = useState<number>(1);
 
     useEffect(() => {
         const getIds = async () => {
@@ -31,6 +34,14 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
 
     const carouselSelection = (msgId: number) => {
         props.handleMsgIdChange(msgId);
+    }
+
+    const onNext = () => {
+        setCarouselIndex(carouselIndex > 0 ? carouselIndex - 1 : carouselIndex);
+    }
+
+    const onPrev = () => {
+        setCarouselIndex(carouselIndex < maxIndex ? carouselIndex + 1 : carouselIndex);
     }
 
     useEffect(() => {
@@ -61,17 +72,20 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
     }, [allOfferIds]);
 
     return (
-        <Carousel>
-            <Carousel.Item>
+        <>
+        <Carousel activeIndex={carouselIndex} indicators={false} controls={false}>
+            <Carousel.Item data-bs-interval={1}>
                 <ListGroup horizontal={true}>
                     {randomOffers.slice(0, 6)}
                 </ListGroup>
             </Carousel.Item>
-            <Carousel.Item>
+            <Carousel.Item data-bs-interval={1}>
                 <ListGroup horizontal={true}>
                     {randomOffers.slice(6, 12)}
                 </ListGroup>
             </Carousel.Item>
         </Carousel>
+        <CarouselControls onNext={onNext} onPrev={onPrev}/>
+        </>
     );
 };

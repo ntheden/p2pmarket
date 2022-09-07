@@ -1,3 +1,5 @@
+import React, { useEffect, useState } from "react";
+import { Sling as Hamburger } from 'hamburger-react'
 import {
     BsSearch,
     BsHouseDoor,
@@ -19,51 +21,44 @@ import {
     Row,
 } from 'react-bootstrap';
 
-export const NavbarLayout = () => (
-    <Navbar className={styles.navbar}>
-        <Col md={{ offset: 2, span: 9 }}>
-            <Container>
-                <Row>
-                    <Col md={{ span: 2 }}>
-                        <Navbar.Brand href="#home" className={styles.brand}>
-                            P2P Market
-                        </Navbar.Brand>
-                    </Col>
-                    <Col md={{ span: 6 }} className={styles.searchBar}>
-                        <InputGroup>
-                            <InputGroup.Text className={styles.searchInput}>
-                                <BsSearch />
-                            </InputGroup.Text>
-                            <FormControl
-                                placeholder="Search"
-                                aria-label="Search"
-                            />
-                        </InputGroup>
-                    </Col>
-                    <Col md={{ span: 4 }}>
-                        <Nav className={styles.links}>
-                            <Nav.Link href="#home">
-                                <BsHouseDoor />
-                            </Nav.Link>
-                            <Nav.Link href="#Inbox">
-                                <BsMessenger />
-                            </Nav.Link>
-                            <Nav.Link href="#NewPost">
-                                <BsPlusSquare />
-                            </Nav.Link>
-                            <Nav.Link href="#Discover">
-                                <BsCompass />
-                            </Nav.Link>
-                            <Nav.Link href="#Notifications">
-                                <BsHeart />
-                            </Nav.Link>
-                            <Nav.Link href="#Notifications">
-                                <BsFillEmojiSmileUpsideDownFill />
-                            </Nav.Link>
-                        </Nav>
-                    </Col>
-                </Row>
-            </Container>
-        </Col>
-    </Navbar>
-);
+export const NavbarLayout = () => {
+    const [burgerIsOpen, setBurgerIsOpen] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (burgerIsOpen) {
+            console.log("Burger is open");
+        } else {
+            console.log("Burger is closed");
+        }
+    }, [burgerIsOpen]);
+
+    return (
+        <Navbar className={styles.navbar}>
+            <Col md={{ offset: 2, span: 9 }}>
+                <Container>
+                    <Row>
+                        <Col md={{ span: 3 }}>
+                            <Navbar.Brand href="#home" className={styles.brand}>
+                                @bitcoinp2pmarketplace
+                            </Navbar.Brand>
+                        </Col>
+                        <Col md={{ span: 5 }} className={styles.searchBar}>
+                            <InputGroup>
+                                <InputGroup.Text className={styles.searchInput}>
+                                    <BsSearch />
+                                </InputGroup.Text>
+                                <FormControl
+                                    placeholder="Search"
+                                    aria-label="Search"
+                                />
+                            </InputGroup>
+                        </Col>
+                        <Col md={{ offset: 2, span: 2 }}>
+                            <Hamburger toggled={burgerIsOpen} toggle={setBurgerIsOpen}/>
+                        </Col>
+                    </Row>
+                </Container>
+            </Col>
+        </Navbar>
+    )
+};
