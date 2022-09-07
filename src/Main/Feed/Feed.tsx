@@ -20,6 +20,7 @@ export const LoadingUser = {
 
 export const Feed = ({data}: any) => {
     const [imageName, setImageName] = useState<string>("no-image.jpg");
+    const [imageClass, setImageClass] = useState<string>("w-100");
     const [user, setUser] = useState<any>(LoadingUser);
 
     useEffect(() => {
@@ -29,8 +30,10 @@ export const Feed = ({data}: any) => {
         }
         if (data.media.length === 0) {
             setImageName("no-image.jpg");
+            setImageClass("w-25");
         } else {
             setImageName(data.media[0].name);
+            setImageClass("w-100");
         }
         setUser(data.user);
     }, [data]);
@@ -44,10 +47,10 @@ export const Feed = ({data}: any) => {
          ) : (
             <Card className={styles.feed}>
               <Header user={user}/>
-              <Image
-                  className="w-614"
+                <Image
+                  className={imageClass}
                   src={`http://localhost:8001/v1/telegram/media/${imageName}`}
-              />
+                />
               <Info data={data} />
               <Footer />
             </Card>
