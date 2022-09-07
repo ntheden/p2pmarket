@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState } from 'react';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { Spinner, Card, Image } from 'react-bootstrap';
 import { Header } from './Header/Header';
 import { Info } from './Info/Info';
@@ -19,9 +19,8 @@ export const LoadingUser = {
 }
 
 export const Feed = ({data}: any) => {
-    const [imageName, setImageName] = useState<string>("no-image.jpg");
-    const [imageClass, setImageClass] = useState<string>("w-100");
     const [user, setUser] = useState<any>(LoadingUser);
+    const [image, setImage] = useState<ReactNode>(<></>);
 
     useEffect(() => {
         if (Object.keys(data).length === 0) {
@@ -29,11 +28,20 @@ export const Feed = ({data}: any) => {
             return;
         }
         if (data.media.length === 0) {
-            setImageName("no-image.jpg");
-            setImageClass("w-25");
+            setImage(
+                <Image
+                  id={styles.image}
+                  className="w-25"
+                  src={`http://localhost:8001/v1/telegram/media/no-image.jpg`}
+                />
+            );
         } else {
-            setImageName(data.media[0].name);
-            setImageClass("w-100");
+            setImage(
+                <Image
+                  className="w-100"
+                  src={`http://localhost:8001/v1/telegram/media/${data.media[0].name}`}
+                />
+            );
         }
         setUser(data.user);
     }, [data]);
@@ -47,10 +55,7 @@ export const Feed = ({data}: any) => {
          ) : (
             <Card className={styles.feed}>
               <Header user={user}/>
-                <Image
-                  className={imageClass}
-                  src={`http://localhost:8001/v1/telegram/media/${imageName}`}
-                />
+              {image}
               <Info data={data} />
               <Footer />
             </Card>

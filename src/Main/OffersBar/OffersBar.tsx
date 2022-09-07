@@ -73,13 +73,13 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
 
     return (
         <>
-        <Carousel activeIndex={carouselIndex} indicators={false} controls={false}>
-            <Carousel.Item data-bs-interval={1}>
+        <Carousel data-interval={1000} activeIndex={carouselIndex} indicators={false} controls={false}>
+            <Carousel.Item data-bs-interval={1000}>
                 <ListGroup horizontal={true}>
                     {randomOffers.slice(0, 6)}
                 </ListGroup>
             </Carousel.Item>
-            <Carousel.Item data-bs-interval={1}>
+            <Carousel.Item data-bs-interval={1000}>
                 <ListGroup horizontal={true}>
                     {randomOffers.slice(6, 12)}
                 </ListGroup>
