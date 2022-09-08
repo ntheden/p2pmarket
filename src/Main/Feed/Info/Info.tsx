@@ -1,8 +1,9 @@
 import React, { useEffect, useState, ReactNode } from 'react';
 import { Spinner, Card, Badge, ListGroup } from 'react-bootstrap';
 import { BsHeart, BsChatRight, BsTelegram, BsBookmark } from 'react-icons/bs';
-import { Username } from 'lib/ui/Username/Username';
+//import { DateTime } from "luxon";
 
+import { Username } from 'lib/ui/Username/Username';
 import styles from './Info.module.scss';
 import { Reactions } from './Reactions/Reactions'
 
@@ -17,6 +18,26 @@ export const Info = ({data}: any) => {
         }
         console.log(data.message.caption);
     }, [data]);
+
+    const computeAgo = (date: string) => {
+        if (date === null || date == 'uknown post date') {
+            return 'unknown post date';
+        }
+        const sec: number = (Number(new Date()) - Number(new Date(date))) / 1000;
+        const minutes: number = (sec / 60) | 0;
+        const hours: number = (sec / 3600) | 0;
+        const days: number = (sec / 86400) | 0;
+        const months: number = (sec / 2592000) | 0;
+        const years: number = (sec / 31536000) | 0;
+        console.log("date", data.message.date);
+        // rough estimate
+        return years > 0 ? `${years} years ago` : (
+                months > 0 ? `${months} months ago` : (
+                days > 0 ? `${days} days ago` : (
+                hours > 0 ? `${hours} hours ago` : (
+                `${minutes} minutes ago`)))
+        )
+    }
 
     useEffect(() => {
         interface LayoutProps {
@@ -36,6 +57,7 @@ export const Info = ({data}: any) => {
             );
         });
         setHashtags(hashtagNodes);
+        setAgo(computeAgo(data.message.date));
     }, [data]);
 
     return (
