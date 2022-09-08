@@ -54,10 +54,10 @@ export const Feed = ({data}: any) => {
             </Spinner>
          ) : (
             <Card className={styles.feed}>
-              <Header user={user}/>
+              <Header user={user} />
               {image}
               <Info data={data} />
-              <Footer />
+              <Footer user={user}/>
             </Card>
          )}
         </>
