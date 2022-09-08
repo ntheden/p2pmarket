@@ -32,6 +32,7 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
   },
+  "proxy": "http://tester:8001/",
   "eslintConfig": {
     "extends": [
       "react-app",
@@ -50,15 +51,11 @@
       "last 1 safari version"
     ]
   },
-  "description": "Clone of Instagram",
+  "description": "Front end for @bitcoinp2pmarketplace",
   "main": "index.js",
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/azizoid/clonestagram.git"
+    "type": "git"
   },
   "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/azizoid/clonestagram/issues"
-  }
+  "license": "ISC"
 }
