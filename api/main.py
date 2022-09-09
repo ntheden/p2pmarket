@@ -37,7 +37,7 @@ uvloop.install()
 app = FastAPI()
 
 
-origins = ["http://localhost:3000", "http://localhost:3001"]
+origins = ["http://localhost:3000", "http://localhost:3001", "https://p2pstore.io"]
 app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
