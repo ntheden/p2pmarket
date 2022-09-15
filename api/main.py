@@ -19,11 +19,13 @@ import uvloop
 import uvicorn
 
 
+app_path = '.' # see Dockerfile
 env = Env(expand_vars=True)
 env.read_env(".env")
 # configure logging
 with env.prefixed('P2PSTORE_'):
-    logs = Path(env('PATH', '.')).joinpath('logs')
+    base = Path(env('PATH', app_path))
+    logs = base.joinpath('logs')
 logs.mkdir(parents=True, exist_ok=True)
 logging.config.fileConfig(
         'logging.conf',
@@ -176,7 +178,7 @@ class Message(SQLModel, table=True):
 
 # configure database
 with env.prefixed('P2PSTORE_'):
-    db_path = Path(env('PATH', '.')).joinpath(env('DB_NAME', 'database.db'))
+    db_path = Path(env('PATH', app_path)).joinpath(env('DB_NAME', 'database.db'))
 sqlite_url = f"sqlite:///{db_path}"
 engine = create_engine(sqlite_url, echo=True, future=True)
 SQLModel.metadata.create_all(engine)
@@ -230,7 +232,7 @@ async def download_and_update_media(tg, message) -> dict:
     msg_dict = json.loads(str(message))
     del msg_dict['chat'] # remove redundant field
     with env.prefixed('P2PSTORE_'):
-        files = Path(env('PATH', '.'))/f"downloads/{message.id}/"
+        files = Path(env('PATH', app_path))/f"downloads/{message.id}/"
     # TODO: check both db and filesystem
     msg_dict = db_get_media_old(msg_dict)
     if files.is_dir() and any(files.iterdir()):
@@ -293,7 +295,7 @@ async def db_set_user(session, usr, tg):
     media = user.media[0]
     media.path = f"downloads/users/{user.id}/"
     with env.prefixed('P2PSTORE_'):
-        dest = Path(env('PATH', '.'))/media.path
+        dest = Path(env('PATH', app_path))/media.path
     dpath = await tg.download_media(usr.photo.big_file_id, f"{dest}/")
     media.name = Path(dpath).name
     if usr.photo.small_file_id:
@@ -313,7 +315,7 @@ async def db_set_media(session, msg, container_msg, tg):
     db_media.type = "photo" if msg.photo else "video"
     db_media.path = f"downloads/messages/{msg.id}/"
     with env.prefixed('P2PSTORE_'):
-        dest = Path(env('PATH', '.'))/db_media.path
+        dest = Path(env('PATH', app_path))/db_media.path
     fpath = await tg.download_media(msg, f"{dest}/")
     if not fpath:
         return db_media
@@ -401,7 +403,7 @@ def set_no_image(session):
 
 
 @app.on_event("startup")
-async def sync_messages(chat_id: str = None):
+async def sync_messages(chat_id: str = None) -> None:
     '''
     TODO: Idea is to do this periodically or upon telegram notification
 
@@ -413,7 +415,11 @@ async def sync_messages(chat_id: str = None):
     logger.info("Synchronizing Telegram Messages..")
     with Session(engine) as session:
         set_no_image(session)
-    async with TelegramClient("my_account") as tg:
+    async with TelegramClient(
+            "my_account",
+            api_id=env("TELEGRAM_API_ID"),
+            api_hash=env("TELEGRAM_API_HASH")
+    ) as tg:
         async for message in tg.get_chat_history(chat_id):
             if not message.from_user or not (message.caption or message.text):
                 logger.info(f"{message.id} has no user and no text, SKIP")
@@ -476,7 +482,7 @@ async def get_message(
     if not media:
         return FileResponse("static/no-image.jpg")
     with env.prefixed('P2PSTORE_'):
-        fpath = Path(env('PATH', '.'))/media[0].path
+        fpath = Path(env('PATH', app_path))/media[0].path
     fpath = fpath/f"thumb-{media[0].name}"
     if not fpath.is_file():
         return FileResponse("static/no-image.jpg")
@@ -499,7 +505,7 @@ async def get_media(
     except sqlalchemy.exc.NoResultFound:
         return FileResponse("static/no-image.jpg")
     with env.prefixed('P2PSTORE_'):
-        fpath = (Path(env('PATH', '.'))/media.path)/name
+        fpath = (Path(env('PATH', app_path))/media.path)/name
     if (fpath).is_file():
         return FileResponse(fpath)
     return FileResponse("static/no-image.jpg")
@@ -522,7 +528,7 @@ async def get_message_old(
     if not thumb and not photo:
         return msg['dict']
     with env.prefixed('P2PSTORE_'):
-        fpath = Path(env('PATH', '.'))/f"downloads/{msg['obj'].id}/"
+        fpath = Path(env('PATH', app_path))/f"downloads/{msg['obj'].id}/"
     if fpath.is_dir() and any(fpath.iterdir()):
         thumb_name = None
         path = None

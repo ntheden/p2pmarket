@@ -1,4 +1,6 @@
 #
-# rename this file to .env
+# rename this file to .env and mount it into container
 #
-export P2PSTORE_PATH=${HOME}/.local/share/p2pstore
+# Get Telegram API credentials from https://my.telegram.org/auth?to=apps
+export TELEGRAM_API_ID=12345
+export TELEGRAM_API_HASH="0123456789abcdef0123456789abcdef"
