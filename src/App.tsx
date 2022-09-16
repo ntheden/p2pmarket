@@ -7,11 +7,14 @@ import { OffersBar } from './Main/OffersBar/OffersBar';
 import { Feed, LoadingUser } from './Main/Feed/Feed';
 
 
+export const apiEndpoint = `${process.env.REACT_APP_API_ENDPOINT}/v1/telegram`;
+
 export const App = () => {
     const [msgId, setMsgId] = useState<number>(0);
     const [data, setData] = useState<any>({});
     const [user, setUser] = useState<any>(LoadingUser);
 
+    console.log(apiEndpoint);
     useEffect(() => {
         const getMsg = async () => {
           if (msgId === undefined) {
@@ -19,7 +22,7 @@ export const App = () => {
           }
           try {
               let response = await axios.get(
-                `http://localhost:8001/v1/telegram/@bitcoinp2pmarketplace?msg_id=${msgId}`
+                     `${apiEndpoint}/@bitcoinp2pmarketplace?msg_id=${msgId}`
               );
               setData(response.data);
               setUser(response.data.user);

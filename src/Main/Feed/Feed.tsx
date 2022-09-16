@@ -4,6 +4,7 @@ import { Spinner, Card, Image } from 'react-bootstrap';
 import { Header } from './Header/Header';
 import { Info } from './Info/Info';
 import { Footer } from './Footer/Footer';
+import { apiEndpoint } from '../../App';
 
 import styles from './Feed.module.scss';
 
@@ -32,14 +33,14 @@ export const Feed = ({data}: any) => {
                 <Image
                   id={styles.image}
                   className="w-25"
-                  src={`http://localhost:8001/v1/telegram/media/no-image.jpg`}
+                  src={`${apiEndpoint}/media/no-image.jpg`}
                 />
             );
         } else {
             setImage(
                 <Image
                   className="w-100"
-                  src={`http://localhost:8001/v1/telegram/media/${data.media[0].name}`}
+                  src={`${apiEndpoint}/media/${data.media[0].name}`}
                 />
             );
         }

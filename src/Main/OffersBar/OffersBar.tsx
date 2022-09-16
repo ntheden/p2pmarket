@@ -5,6 +5,7 @@ import Image from 'react-bootstrap/Image';
 
 import { CarouselControls, ControlProps } from './CarouselControls/CarouselControls'
 import styles from "./OffersBar.module.scss"
+import { apiEndpoint } from '../../App';
 
 export interface FuncProps {
   handleMsgIdChange: (id: number) => void;
@@ -19,9 +20,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
     useEffect(() => {
         const getIds = async () => {
           try {
-              let response = await axios.get(
-                `http://localhost:8001/v1/telegram/@bitcoinp2pmarketplace`
-              );
+              let response = await axios.get(`${apiEndpoint}/@bitcoinp2pmarketplace`);
               setAllOfferIds(response.data);
               console.log("allOfferIds are:");
               console.log(allOfferIds);
@@ -57,7 +56,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
                  ) : (
                     <Image
                         className="w-80"
-                        src={`http://localhost:8001/v1/telegram/@bitcoinp2pmarket?msg_id=${randomId}&thumb=1`}
+                        src={`${apiEndpoint}/@bitcoinp2pmarketplace?msg_id=${randomId}&thumb=1`}
                         roundedCircle={true}
                         thumbnail={true}
                     />
