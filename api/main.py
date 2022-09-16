@@ -24,7 +24,7 @@ env = Env(expand_vars=True)
 env.read_env(default_app_path/"main.env")
 default_app_path = default_app_path/"run"
 # configure logging
-with env.prefixed('P2PSTORE_'):
+with env.prefixed('P2PMARKET_'):
     base = Path(env('PATH', default_app_path))
     logs = base.joinpath('logs')
 logs.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,8 @@ uvloop.install()
 app = FastAPI()
 
 
-origins = ["http://localhost:3000", "http://localhost:3001", "https://p2pstore.io"]
+with env.prefixed('P2PMARKET_'):
+    origins = env.list('CORS_ALLOW', 'http://localhost:3000')
 app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -178,7 +179,7 @@ class Message(SQLModel, table=True):
 
 
 # configure database
-with env.prefixed('P2PSTORE_'):
+with env.prefixed('P2PMARKET_'):
     db_path = Path(env('PATH', default_app_path)).joinpath(env('DB_NAME', 'database.db'))
 sqlite_url = f"sqlite:///{db_path}"
 engine = create_engine(sqlite_url, echo=True, future=True)
@@ -232,7 +233,7 @@ async def download_and_update_media(tg, message) -> dict:
     '''
     msg_dict = json.loads(str(message))
     del msg_dict['chat'] # remove redundant field
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         files = Path(env('PATH', default_app_path))/f"downloads/{message.id}/"
     # TODO: check both db and filesystem
     msg_dict = db_get_media_old(msg_dict)
@@ -295,7 +296,7 @@ async def db_set_user(session, usr, tg):
         user.media = [Media()]
     media = user.media[0]
     media.path = f"downloads/users/{user.id}/"
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         dest = Path(env('PATH', default_app_path))/media.path
     dpath = await tg.download_media(usr.photo.big_file_id, f"{dest}/")
     media.name = Path(dpath).name
@@ -315,7 +316,7 @@ async def db_set_media(session, msg, container_msg, tg):
     db_media = Media()
     db_media.type = "photo" if msg.photo else "video"
     db_media.path = f"downloads/messages/{msg.id}/"
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         dest = Path(env('PATH', default_app_path))/db_media.path
     fpath = await tg.download_media(msg, f"{dest}/")
     if not fpath:
@@ -482,7 +483,7 @@ async def get_message(
         raise HTTPException(status_code=404)
     if not media:
         return FileResponse("static/no-image.jpg")
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         fpath = Path(env('PATH', default_app_path))/media[0].path
     fpath = fpath/f"thumb-{media[0].name}"
     if not fpath.is_file():
@@ -505,7 +506,7 @@ async def get_media(
                     name = media.user.thumb_name
     except sqlalchemy.exc.NoResultFound:
         return FileResponse("static/no-image.jpg")
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         fpath = (Path(env('PATH', default_app_path))/media.path)/name
     if (fpath).is_file():
         return FileResponse(fpath)
@@ -528,7 +529,7 @@ async def get_message_old(
         return {}
     if not thumb and not photo:
         return msg['dict']
-    with env.prefixed('P2PSTORE_'):
+    with env.prefixed('P2PMARKET_'):
         fpath = Path(env('PATH', default_app_path))/f"downloads/{msg['obj'].id}/"
     if fpath.is_dir() and any(fpath.iterdir()):
         thumb_name = None
@@ -545,7 +546,7 @@ async def get_message_old(
 
 
 if __name__=="__main__":
-    logging.getLogger("main").info('P2P Store API')
+    logging.getLogger("main").info('P2P Market API')
     server = uvicorn.Server(
         uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off")
     )

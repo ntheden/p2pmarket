@@ -4,3 +4,4 @@
 # Get Telegram API credentials from https://my.telegram.org/auth?to=apps
 export TELEGRAM_API_ID=12345
 export TELEGRAM_API_HASH="0123456789abcdef0123456789abcdef"
+export P2PMARKET_CORS_ALLOW=http://localhost:3000
