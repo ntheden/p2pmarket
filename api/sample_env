@@ -1,5 +1,5 @@
 #
-# rename this file to .env and mount it into container
+# rename this file to main.env and put real values
 #
 # Get Telegram API credentials from https://my.telegram.org/auth?to=apps
 export TELEGRAM_API_ID=12345
