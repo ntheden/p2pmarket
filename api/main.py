@@ -99,16 +99,6 @@ async def progress(current, total):
     print(f"{current * 100 / total:.1f}%")
 
 
-class MessageMedia(SQLModel, table=True):
-    '''
-    Deprecated
-    '''
-    id: int = Field(primary_key=True)
-    name: Union[str, None]
-    thumb_name: Union[str, None]
-    type: str = "photo"
-
-
 class Media(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: Union[str, None]
@@ -184,84 +174,6 @@ with env.prefixed('P2PMARKET_'):
 sqlite_url = f"sqlite:///{db_path}"
 engine = create_engine(sqlite_url, echo=True, future=True)
 SQLModel.metadata.create_all(engine)
-
-
-def db_get_media_old(msg_dict):
-    msg_dict["media_type"] = None
-    with Session(engine) as session:
-        try:
-            media = session.exec(select(MessageMedia).where(
-                MessageMedia.id == msg_dict['id'])).one()
-        except sqlalchemy.exc.NoResultFound:
-            return msg_dict
-        msg_dict["media_type"] = media.type
-        media_dict = msg_dict[media.type]
-        media_dict["file_name"] = media.name
-        media_dict["thumb_name"] = media.thumb_name
-    return msg_dict
-
-
-def db_set_media_old(msg_dict):
-    '''
-    Creates database entry holding the media filename
-    associated with this message. Also updates :msg_dict:
-    '''
-    media_dict = msg_dict[msg_dict["media_type"]]
-    if not media_dict:
-        return msg_dict
-    with Session(engine) as session:
-        try:
-            media = session.exec(select(MessageMedia).where(
-                MessageMedia.id == msg_dict['id'])).one()
-            return msg_dict
-        except sqlalchemy.exc.NoResultFound:
-            pass
-        media = MessageMedia(
-            id=msg_dict['id'],
-            name=media_dict["file_name"],
-            thumb_name=media_dict["thumb_name"],
-            type=msg_dict["media_type"],
-        )
-        session.add(media)
-        session.commit()
-    return msg_dict
-
-
-async def download_and_update_media(tg, message) -> dict:
-    '''
-    Deprecated
-    '''
-    msg_dict = json.loads(str(message))
-    del msg_dict['chat'] # remove redundant field
-    with env.prefixed('P2PMARKET_'):
-        files = Path(env('PATH', default_app_path))/f"downloads/{message.id}/"
-    # TODO: check both db and filesystem
-    msg_dict = db_get_media_old(msg_dict)
-    if files.is_dir() and any(files.iterdir()):
-        # already something there. can't verify they are all there or file
-        # integrity, good enough though
-        if not Flags.redownload:
-            return msg_dict
-    media = message.photo or message.video
-    if not media:
-        # there are many other types of media, only interested in these two
-        return msg_dict
-    key = "photo" if message.photo else "video"
-    msg_dict["media_type"] = key
-    media_dict = msg_dict[key]
-    media_dict.update({
-        "file_name": None,
-        "thumb_name": None,
-    })
-    fpath = await tg.download_media(message, f'{files}/', progress=progress)
-    if not fpath:
-        return msg_dict
-    fpath = Path(fpath)
-    media_dict["file_name"] = fpath.name
-    if media.thumbs:
-        thumb_dict = media_dict["thumbs"][0]
-        thumb_dict["file_name"] = make_thumb(fpath)
-    return db_set_media_old(msg_dict)
 
 
 def db_set_reactions(session, msg):
@@ -439,7 +351,7 @@ async def sync_messages(chat_id: str = None) -> None:
                 messages = messages[:-len(follow_on_msgs)]
             msg_item = {
                 "obj": message,
-                "dict": json.loads(str(message)), #await download_and_update_media(tg, message),
+                "dict": json.loads(str(message)),
                 "follow-ons": follow_on_msgs
             }
             messages.append(msg_item)
@@ -510,38 +422,6 @@ async def get_media(
         fpath = (Path(env('PATH', default_app_path))/media.path)/name
     if (fpath).is_file():
         return FileResponse(fpath)
-    return FileResponse("static/no-image.jpg")
-
-
-@app.get("/telegram/{chat_id}")
-async def get_message_old(
-        chat_id: str,
-        msg_id: Union[int, None] = None,
-        thumb: Union[bool, None] = None,
-        photo: Union[bool, None] = None
-    ) -> Union[FileResponse, dict]:
-    global messages
-    if msg_id is None:
-        return sorted([message['obj'].id for message in messages])
-    msg = [m for m in messages if m['obj'].id == msg_id]
-    msg = msg[0] if msg else None
-    if not msg:
-        return {}
-    if not thumb and not photo:
-        return msg['dict']
-    with env.prefixed('P2PMARKET_'):
-        fpath = Path(env('PATH', default_app_path))/f"downloads/{msg['obj'].id}/"
-    if fpath.is_dir() and any(fpath.iterdir()):
-        thumb_name = None
-        path = None
-        for fname in fpath.iterdir():
-            if fname.name.startswith('thumb-'):
-                thumb_name = fname
-            else:
-                path = fname
-        if photo or not thumb_name:
-            return FileResponse(path)
-        return FileResponse(thumb_name)
     return FileResponse("static/no-image.jpg")
 
 
