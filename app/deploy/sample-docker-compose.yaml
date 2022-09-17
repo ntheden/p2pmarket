@@ -1,0 +1,16 @@
+version: "3.3"
+
+services:
+    app-p2pmarket:
+        image: "v4sats/app-p2pmarket:latest"
+        container_name: "app-p2pmarket"
+        environment:
+            VIRTUAL_HOST: "myp2pmkt.com"
+            LETSENCRYPT_HOST: "myp2pmkt.com"
+        networks: ["server"]
+        restart: "always"
+
+networks:
+    server:
+        external: true
+
