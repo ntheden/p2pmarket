@@ -14,10 +14,9 @@ export const App = () => {
     const [data, setData] = useState<any>({});
     const [user, setUser] = useState<any>(LoadingUser);
 
-    console.log(apiEndpoint);
     useEffect(() => {
         const getMsg = async () => {
-          if (msgId === undefined) {
+          if (msgId === undefined || msgId === 0) {
             return;
           }
           try {
