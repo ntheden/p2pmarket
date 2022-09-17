@@ -1,0 +1,31 @@
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+
+    .username {
+        margin-left: 1em;
+    }
+
+    .threeDots {
+        justify-content: flex-end;
+    }
+
+    .image {
+        height: 60px;
+        width: 60px;
+    }
+}
+
+:global(.list-group-item) {
+    text-align: center;
+    a {
+        text-decoration: none;
+
+        &.markedLink {
+            color: red;
+            font-weight: bold;
+        }
+    }
+}

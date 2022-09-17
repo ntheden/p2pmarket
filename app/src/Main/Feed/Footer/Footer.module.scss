@@ -1,0 +1,13 @@
+.footer {
+    display: flex;
+    justify-content: flex-start;
+    align-content: center;
+    padding: 2px;
+    background: white;
+
+    #button {
+        padding: 4px;
+        width: 100%;
+        font-size: 1.3em;
+    }
+}
