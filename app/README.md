@@ -1,7 +1,3 @@
-# Demo
-
-Example of this app is running [here](https://p2pmarket.net)
-
 # How to load this onto a VPS (virtual private server)
 
 ### `REACT_APP_API_ENDPOINT=http://localhost:8001 npm run build`
