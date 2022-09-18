@@ -12,7 +12,7 @@ import sqlalchemy
 from sqlmodel import Session, select
 import uvloop
 
-from config import env, app_path
+from config import env, run_path
 from db import (
         engine,
         create_db_and_tables,
@@ -22,6 +22,7 @@ from db import (
         Hashtag,
         Reaction
 )
+import docker_setup
 
 
 # for pyrogram speedup
@@ -106,7 +107,7 @@ async def db_set_user(session, usr, tg):
         user.media = [Media()]
     media = user.media[0]
     media.path = f"downloads/users/{user.id}/"
-    dest = app_path/media.path
+    dest = run_path/media.path
     dpath = await tg.download_media(usr.photo.big_file_id, f"{dest}/")
     media.name = Path(dpath).name
     if usr.photo.small_file_id:
@@ -125,7 +126,7 @@ async def db_set_media(session, msg, container_msg, tg):
     db_media = Media()
     db_media.type = "photo" if msg.photo else "video"
     db_media.path = f"downloads/messages/{msg.id}/"
-    dest = app_path/db_media.path
+    dest = run_path/db_media.path
     fpath = await tg.download_media(msg, f"{dest}/")
     if not fpath:
         return db_media
@@ -257,6 +258,8 @@ async def sync_messages(chat_id: str = None) -> None:
 
 async def main(args):
     create_db_and_tables()
+    if not Path('deploy/docker-compose.yml').is_file():
+        docker_setup.docker_setup()
     await sync_messages()
 
 

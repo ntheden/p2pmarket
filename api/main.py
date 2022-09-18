@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from typing import Union
 import uvicorn
 
-from config import env, app_path
+from config import env, run_path
 from db import engine, Message, Media
 
 
@@ -60,7 +60,7 @@ async def get_message(
         raise HTTPException(status_code=404)
     if not media:
         return FileResponse("static/no-image.jpg")
-    fpath = app_path/media[0].path/f"thumb-{media[0].name}"
+    fpath = run_path/media[0].path/f"thumb-{media[0].name}"
     if not fpath.is_file():
         return FileResponse("static/no-image.jpg")
     return FileResponse(fpath)
@@ -81,13 +81,16 @@ async def get_media(
                     name = media.user.thumb_name
     except sqlalchemy.exc.NoResultFound:
         return FileResponse("static/no-image.jpg")
-    fpath = (app_path/media.path)/name
+    fpath = (run_path/media.path)/name
     if (fpath).is_file():
         return FileResponse(fpath)
     return FileResponse("static/no-image.jpg")
 
 
 if __name__=="__main__":
+    '''
+    Better to run uvicorn --port=8001 --reload main:app
+    '''
     logging.getLogger("main").info('P2P Market API')
     server = uvicorn.Server(
         uvicorn.Config(app, host="0.0.0.0", port=8001, lifespan="off")
