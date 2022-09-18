@@ -4,3 +4,4 @@ logs
 .env
 main.env
 docker-compose.yml
+docker-compose.yaml
