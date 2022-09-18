@@ -33,4 +33,4 @@ save archive of the container and send it to your VPS
 
 On VPS:
 gunzip app-p2pmarket.tar.gz
-cat app-p2pmarket | docker load
+cat app-p2pmarket.tar | docker load
