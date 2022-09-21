@@ -7,12 +7,13 @@ services:
         environment:
             VIRTUAL_HOST: {{ api_endpoint }}
             LETSENCRYPT_HOST: {{ api_endpoint }}
+            PYTHONPATH: /code/app
         networks: ["server"]
         restart: "always"
         volumes:
             - type: bind
               source: {{ run_dir }}  
-              target: /app/run
+              target: /code/run
 
 networks:
     server:

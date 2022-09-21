@@ -13,7 +13,6 @@ Pillow==9.2.0
 pyaes==1.6.1
 pydantic==1.9.2
 pyparsing==3.0.9
-Pyrogram==2.0.41
 PySocks==1.7.1
 python-dotenv==0.20.0
 sniffio==1.2.0

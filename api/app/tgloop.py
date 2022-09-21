@@ -224,7 +224,7 @@ async def sync_messages(chat_id: str = None) -> None:
     with Session(engine) as session:
         set_no_image(session)
     async with TelegramClient(
-            "my_account",
+            str(run_path/"telegram_account"),
             api_id=env("TELEGRAM_API_ID"),
             api_hash=env("TELEGRAM_API_HASH")
     ) as tg:
