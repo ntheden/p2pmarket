@@ -5,12 +5,13 @@ from pathlib import Path
 
 
 app_path = Path(__file__).parent.parent
+root_path = app_path.parent
 env = Env(expand_vars=True)
 env.read_env(app_path/"main.env")
 
 # configure logging
 with env.prefixed('P2PMARKET_'):
-    run_path = Path(env('PATH', app_path/"run"))
+    run_path = Path(env('PATH', root_path/"run"))
     logs = run_path.joinpath('logs')
 logs.mkdir(parents=True, exist_ok=True)
 logging.config.fileConfig(
@@ -24,4 +25,5 @@ with env.prefixed('P2PMARKET_'):
     db_path = Path(env('PATH', run_path)).joinpath(env('DB_NAME', 'database.db'))
     db_debug = env.bool('DB_DEBUG', False)
 db_url = f"sqlite:///{db_path}"
+
 

@@ -10,8 +10,8 @@ from sqlmodel import Session, select
 from typing import Union
 import uvicorn
 
-from config import env, run_path
-from db import engine, Message, Media
+from .config import env, run_path
+from .db import engine, Message, Media
 
 
 app = FastAPI()

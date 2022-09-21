@@ -12,7 +12,7 @@ import sqlalchemy
 from sqlmodel import Session, select
 import uvloop
 
-from config import env, run_path
+from config import env, run_path, root_path
 from db import (
         engine,
         create_db_and_tables,
@@ -258,7 +258,7 @@ async def sync_messages(chat_id: str = None) -> None:
 
 async def main(args):
     create_db_and_tables()
-    if not Path('deploy/docker-compose.yml').is_file():
+    if not (root_path/Path('deploy/docker-compose.yml')).is_file():
         docker_setup.docker_setup()
     await sync_messages()
 
