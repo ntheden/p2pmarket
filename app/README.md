@@ -1,19 +1,28 @@
 # How to load this onto a VPS (virtual private server)
 
-### `REACT_APP_API_ENDPOINT=http://localhost:8001 npm run build`
+### Development and Test
+ `REACT_APP_API_ENDPOINT=http://localhost:8001 npm run build`
 **The api endpoint environment variable must match your backend location, localhost is just for testing**
 Builds the react app with the output in the `build` folder
 
-### `npm install -g serve`
-    `serve -s build`
+###
+`npm install -g serve`
+`serve -s build`
 Test the build. Make sure you have the backend server running and serving at `localhost:8001` (if you are following the above example build command).
 
 
-### `REACT_APP_API_ENDPOINT=https://api.myp2pmkt.com npm run build`
-Build the app again but place the real endpoint location, such as https://api.myp2pmkt.com
+### Build the frontend app for deployment
+`REACT_APP_API_ENDPOINT=https://api.myp2pmkt.com npm run build`
+- Build the app again but place the real endpoint location, such as https://api.myp2pmkt.com
+- If you are using the backend to serve the frontend, then leave out the `REACT_APP_API_ENDPOINT` environment variable
+`npm run build`
 
-### `docker build --tag=v4sats/app-p2pmarket:latest .`
-make a docker container
+
+### Stop here if you are going to serve the app from the backend
+
+### make a docker container
+`docker build --tag=v4sats/app-p2pmarket:latest .`
+
 
 ### `docker run -p 3000:80 -t v4sats/app-p2pmarket:latest`
 test the container

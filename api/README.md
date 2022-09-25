@@ -1,7 +1,12 @@
 ### P2P Market API
 
-
 # Development Setup:
+## Non-Docker:
+python3 -m pip install -r requirements
+PYTHONPATH=./app uvicorn --port=8001 --reload app.main:app
+
+
+# Deployment Setup:
 In main.env, set `P2PMARKET_API_ENDPOINT`, which will be the domain name. This is used by the proxy server and to generate a certificate for https
 
 
