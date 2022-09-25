@@ -5,7 +5,7 @@ import Image from 'react-bootstrap/Image';
 
 import { CarouselControls, ControlProps } from './CarouselControls/CarouselControls'
 import styles from "./OffersBar.module.scss"
-import { apiEndpoint } from '../../App';
+import { apiEndpoint } from '../Main';
 
 export interface FuncProps {
   handleMsgIdChange: (id: number) => void;

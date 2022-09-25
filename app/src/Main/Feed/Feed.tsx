@@ -4,7 +4,7 @@ import { Spinner, Card, Image } from 'react-bootstrap';
 import { Header } from './Header/Header';
 import { Info } from './Info/Info';
 import { Footer } from './Footer/Footer';
-import { apiEndpoint } from '../../App';
+import { apiEndpoint } from '../Main';
 
 import styles from './Feed.module.scss';
 
