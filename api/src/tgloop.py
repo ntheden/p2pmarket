@@ -258,7 +258,7 @@ async def sync_messages(chat_id: str = None) -> None:
 
 async def main(args):
     create_db_and_tables()
-    if not (root_path/Path('deploy/docker-compose.yml')).is_file():
+    if not (root_path/'docker-compose.yaml').is_file():
         docker_setup.docker_setup()
     await sync_messages()
 

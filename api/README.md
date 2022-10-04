@@ -13,7 +13,8 @@ In main.env, set `P2PMARKET_API_ENDPOINT`, which will be the domain name. This i
 # to test outside of docker:
 PYTHONPATH=./app uvicorn --port=8001 --reload app.main:app
 
-`deploy/sample-docker-compose.yaml` can be copied to `deploy/docker-compose.yaml` and modified. Or, run `docker_setup.py` after copying `sample_env` to `main.env` and modifying it to match your configuration.
+# configuring the docker-compose file
+Run `docker_setup.py` after copying `sample_env` to `main.env` and modifying it to match your configuration.
 
 docker build --tag=v4sats/api-p2pmarket:latest .
 

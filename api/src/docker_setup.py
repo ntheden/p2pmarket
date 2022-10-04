@@ -9,9 +9,9 @@ def docker_setup() -> None:
     with env.prefixed('P2PMARKET_'):
         api_endpoint = env('API_ENDPOINT')
     assert api_endpoint, 'P2PMARKET_API_ENDPOINT needs to be set in main.env'
-    with open(root_path.joinpath('deploy/docker-compose.jinja')) as f:
+    with open(root_path/'docker-compose.jinja') as f:
         template = Template(f.read())
-    with open(root_path.joinpath('deploy/docker-compose.yaml'), 'w') as f:
+    with open(root_path/'docker-compose.yaml', 'w') as f:
         f.write(template.render(
             run_dir=run_path,
             api_endpoint=api_endpoint
