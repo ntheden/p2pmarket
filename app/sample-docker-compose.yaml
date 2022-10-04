@@ -5,8 +5,8 @@ services:
         image: "v4sats/app-p2pmarket:latest"
         container_name: "app-p2pmarket"
         environment:
-            VIRTUAL_HOST: "myp2pmkt.com"
-            LETSENCRYPT_HOST: "myp2pmkt.com"
+            VIRTUAL_HOST: myp2pmkt.com
+            LETSENCRYPT_HOST: myp2pmkt.com
         networks: ["server"]
         restart: "always"
 
