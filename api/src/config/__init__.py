@@ -11,7 +11,8 @@ env.read_env(app_path/"main.env")
 
 # configure logging
 with env.prefixed('P2PMARKET_'):
-    run_path = Path(env('PATH', root_path/"run"))
+    run_path = Path(env('RUN_PATH', root_path/"run"))
+    static_path = Path(env('RUN_PATH', root_path/"static"))
     logs = run_path.joinpath('logs')
 logs.mkdir(parents=True, exist_ok=True)
 logging.config.fileConfig(

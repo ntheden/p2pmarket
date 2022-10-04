@@ -2,8 +2,8 @@ version: "3.3"
 
 services:
     p2pmarket:
-        image: "v4sats/p2pmarket:latest"
-        container_name: "p2pmarket"
+        image: "v4sats/api-p2pmarket:latest"
+        container_name: "api-p2pmarket"
         environment:
             VIRTUAL_HOST: {{ api_endpoint }}
             LETSENCRYPT_HOST: {{ api_endpoint }}

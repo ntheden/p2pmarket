@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 from typing import Union
 import uvicorn
 
-from .config import env, run_path
+from .config import env, run_path, static_path
 from .db import engine, Message, Media
 
 
@@ -59,10 +59,10 @@ async def get_message(
     except sqlalchemy.exc.NoResultFound:
         raise HTTPException(status_code=404)
     if not media:
-        return FileResponse("static/no-image.jpg")
+        return FileResponse(static_path/"no-image.jpg")
     fpath = run_path/media[0].path/f"thumb-{media[0].name}"
     if not fpath.is_file():
-        return FileResponse("static/no-image.jpg")
+        return FileResponse(static_path/"no-image.jpg")
     return FileResponse(fpath)
 
 
@@ -80,11 +80,11 @@ async def get_media(
                 if media.user:
                     name = media.user.thumb_name
     except sqlalchemy.exc.NoResultFound:
-        return FileResponse("static/no-image.jpg")
+        return FileResponse(static_path/"no-image.jpg")
     fpath = (run_path/media.path)/name
     if (fpath).is_file():
         return FileResponse(fpath)
-    return FileResponse("static/no-image.jpg")
+    return FileResponse(static_path/"no-image.jpg")
 
 
 if __name__=="__main__":
