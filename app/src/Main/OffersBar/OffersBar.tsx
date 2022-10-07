@@ -90,7 +90,7 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
     useEffect(() => {
         // random initial selection FIXME: pick from current carouselIndex
         carouselSelection(allOfferIds[Math.floor(Math.random() * allOfferIds.length)])
-        setCarouselItems(listChunks(chunks(allOfferIds)));
+        setCarouselItems(listChunks(chunks(shuffle(allOfferIds))));
     }, [allOfferIds]);
 
     return (
