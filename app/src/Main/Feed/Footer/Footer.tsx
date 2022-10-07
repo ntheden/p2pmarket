@@ -8,7 +8,7 @@ import styles from './Footer.module.scss';
 export const Footer = (user: any) => {
 
     const handleClick = () => {
-        window.location.href = `https://t.me/${user.user.username}`
+        window.open(`https://t.me/${user.user.username}`)
     };
 
     return (

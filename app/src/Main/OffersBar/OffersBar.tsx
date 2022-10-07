@@ -12,7 +12,7 @@ export interface FuncProps {
 };
 
 export const OffersBar = (props: FuncProps): JSX.Element => {
-    const [randomOffers, setRandomOffers] = useState<ReactNode[]>([]);
+    const [carouselItems, setCarouselItems] = useState<ReactNode[]>([]);
     const [allOfferIds, setAllOfferIds] = useState<number[]>([]);
     const [carouselIndex, setCarouselIndex] = useState<number>(0);
     const [maxIndex, setMaxIndex] = useState<number>(1);
@@ -43,46 +43,60 @@ export const OffersBar = (props: FuncProps): JSX.Element => {
         setCarouselIndex(carouselIndex < maxIndex ? carouselIndex + 1 : carouselIndex);
     }
 
-    useEffect(() => {
-        const randomOfferTempArray = Array.from(
-            { length: 12 },
-            () => allOfferIds[Math.floor(Math.random() * allOfferIds.length)],
-        ).map((randomId, index) => (
-            <ListGroup.Item key={index} onClick={() => carouselSelection(randomId)}>
-                {randomId === undefined ? (
+    const shuffle = (o: Array<number>) => {
+      for (var j, x, i = o.length;
+           i;
+           j = Math.floor(Math.random() * i), x = o[--i], o[i] = o[j], o[j] = x
+      );
+      return o;
+    }
+
+    const chunks = (ar: Array<number>) => {
+        let count = ar.length / 6;
+        let ar1 = [];
+        console.log(`Looking at ${count} swipes`);
+        setMaxIndex(count);
+        for (let i=0; i<count; i++) {
+            ar1.push(ar.splice(0, 6).map((item, index) => (
+              <ListGroup.Item key={i+index} onClick={() => carouselSelection(item)}>
+                {item === undefined ? (
                     <Spinner animation="border" role="status">
                         <span className="visually-hidden">Loading...</span>
                     </Spinner>
                  ) : (
                     <Image
                         className="w-80"
-                        src={`${apiEndpoint}/@bitcoinp2pmarketplace?msg_id=${randomId}&thumb=1`}
+                        src={`${apiEndpoint}/@bitcoinp2pmarketplace?msg_id=${item}&thumb=1`}
                         roundedCircle={true}
                         thumbnail={true}
                     />
                  )}
-            </ListGroup.Item>
+              </ListGroup.Item>
+            )));
+        } 
+        return ar1;
+    }
+
+    const listChunks = (chunks: Array<any>) => {
+        return chunks.map((chunk) => (
+            <Carousel.Item data-bs-interval={1000}>
+                <ListGroup horizontal={true}>
+                    {chunk}
+                </ListGroup>
+            </Carousel.Item>
         ));
-        setRandomOffers(randomOfferTempArray);
-        // random initial selection
+    }
+
+    useEffect(() => {
+        // random initial selection FIXME: pick from current carouselIndex
         carouselSelection(allOfferIds[Math.floor(Math.random() * allOfferIds.length)])
-        console.log("randomOffers are:")
-        console.log(randomOffers)
+        setCarouselItems(listChunks(chunks(allOfferIds)));
     }, [allOfferIds]);
 
     return (
         <>
         <Carousel data-interval={1000} activeIndex={carouselIndex} indicators={false} controls={false}>
-            <Carousel.Item data-bs-interval={1000}>
-                <ListGroup horizontal={true}>
-                    {randomOffers.slice(0, 6)}
-                </ListGroup>
-            </Carousel.Item>
-            <Carousel.Item data-bs-interval={1000}>
-                <ListGroup horizontal={true}>
-                    {randomOffers.slice(6, 12)}
-                </ListGroup>
-            </Carousel.Item>
+        {carouselItems}
         </Carousel>
         <CarouselControls onNext={onNext} onPrev={onPrev}/>
         </>
